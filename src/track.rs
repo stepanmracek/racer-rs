@@ -1,6 +1,7 @@
-use std::f32::consts::FRAC_PI_2;
+use std::{f32::consts::FRAC_PI_2, rc::Rc};
 
 use macroquad::{prelude::*, rand::gen_range};
+
 
 struct Waypoint {
     pos: Vec2,
@@ -127,21 +128,35 @@ impl Segment {
         // self.start.draw();
         // end.draw();
     }
+
+    fn bbox(&self) -> rstar::AABB<[f32; 2]> {
+        rstar::AABB::from_points([self.start.pos.into(), self.end().pos.into()].iter())
+    }
 }
 
+type TreeNode =
+    rstar::primitives::GeomWithData<rstar::primitives::Rectangle<[f32; 2]>, Rc<Segment>>;
+
 pub struct Track {
-    segments: Vec<Segment>,
+    segments: Vec<Rc<Segment>>,
+    rtree: Option<rstar::RTree<TreeNode>>,
 }
 
 impl Track {
     pub fn new() -> Self {
-        let mut track = Self { segments: vec![] };
+        let mut track = Self {
+            segments: vec![],
+            rtree: None,
+        };
         track.add_shape(Shape::Straigth(100.0));
         track
     }
 
-    pub fn draw(&self) {
-        self.segments.iter().for_each(|segment| segment.draw());
+    pub fn draw(&self, view: &Rect) {
+        if let Some(rtree) = &self.rtree {
+            let envelope = rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
+            rtree.locate_in_envelope_intersecting(&envelope).for_each(|segment| segment.data.draw());
+        }
     }
 
     fn last_end(&self) -> Waypoint {
@@ -152,10 +167,10 @@ impl Track {
     }
 
     fn add_shape(&mut self, shape: Shape) {
-        self.segments.push(Segment {
+        self.segments.push(Rc::new(Segment {
             start: self.last_end(),
             shape,
-        });
+        }));
     }
 
     pub fn add_random_shape(&mut self) {
@@ -194,5 +209,14 @@ impl Track {
         };
 
         self.add_shape(shape);
+    }
+
+    pub fn compute_rtree(&mut self) {
+        let elements: Vec<_> = self
+            .segments
+            .iter()
+            .map(|segment| TreeNode::new(segment.bbox().into(), Rc::clone(segment)))
+            .collect();
+        self.rtree = Some(rstar::RTree::<TreeNode>::bulk_load(elements));
     }
 }
