@@ -20,10 +20,10 @@ impl Car {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, on_track: bool) {
         let rotation_speed = 1.0;
         let acceleration = 100.0;
-        let friction = 0.98;
+        let friction = if on_track { 0.98 } else { 0.8 };
         let dt = get_frame_time();
 
         if is_key_down(KeyCode::Up) {

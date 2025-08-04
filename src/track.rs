@@ -2,7 +2,9 @@ use std::{f32::consts::FRAC_PI_2, rc::Rc};
 
 use macroquad::{prelude::*, rand::gen_range};
 
+const TRACK_WIDTH: f32 = 30.0;
 
+#[derive(Clone)]
 struct Waypoint {
     pos: Vec2,
     dir: Vec2,
@@ -36,6 +38,16 @@ struct Turn {
     turn_type: TurnType,
 }
 
+impl Turn {
+    fn center(&self, start: &Waypoint) -> Vec2 {
+        let sgn = match self.turn_type {
+            TurnType::Left => 1.0,
+            TurnType::Right => -1.0,
+        };
+        start.dir.perp() * self.radius * sgn + start.pos
+    }
+}
+
 enum Shape {
     Straigth(f32),
     Turn(Turn),
@@ -44,60 +56,58 @@ enum Shape {
 struct Segment {
     start: Waypoint,
     shape: Shape,
+    end: Waypoint,
 }
 
 impl Segment {
-    fn end(&self) -> Waypoint {
-        match self.shape {
+    fn new(start: Waypoint, shape: Shape) -> Self {
+        let end = match shape {
             Shape::Straigth(len) => Waypoint {
-                pos: self.start.pos + self.start.dir * len,
-                dir: self.start.dir,
+                pos: start.pos + start.dir * len,
+                dir: start.dir,
             },
             Shape::Turn(ref turn) => {
                 let sgn = match turn.turn_type {
                     TurnType::Left => 1.0,
                     TurnType::Right => -1.0,
                 };
-                let center = self.start.dir.perp().normalize() * turn.radius * sgn + self.start.pos;
+                let center = start.dir.perp() * turn.radius * sgn + start.pos;
                 let rot_vector = Vec2::from_angle(sgn * turn.deg.to_radians());
-                let to_start = self.start.pos - center;
+                let to_start = start.pos - center;
                 Waypoint {
                     pos: rot_vector.rotate(to_start) + center,
-                    dir: rot_vector.rotate(self.start.dir).normalize(),
+                    dir: rot_vector.rotate(start.dir),
                 }
             }
-        }
+        };
+        Self { start, shape, end }
     }
 
     fn draw(&self) {
-        let end = self.end();
-
         match self.shape {
             Shape::Straigth(_len) => {
-                for (d, color, thickness) in
-                    [(0.0, BLACK, 30.0), (-15.0, WHITE, 1.0), (15.0, WHITE, 1.0)]
-                {
+                for (d, color, thickness) in [
+                    (0.0, BLACK, TRACK_WIDTH),
+                    (-TRACK_WIDTH / 2.0, WHITE, 1.0),
+                    (TRACK_WIDTH / 2.0, WHITE, 1.0),
+                ] {
                     let shift = if d != 0.0 {
-                        (end.pos - self.start.pos).perp().normalize() * d
+                        (self.end.pos - self.start.pos).perp().normalize() * d
                     } else {
                         Vec2::ZERO
                     };
                     draw_line(
                         self.start.pos.x + shift.x,
                         self.start.pos.y + shift.y,
-                        end.pos.x + shift.x,
-                        end.pos.y + shift.y,
+                        self.end.pos.x + shift.x,
+                        self.end.pos.y + shift.y,
                         thickness,
                         color,
                     );
                 }
             }
             Shape::Turn(ref turn) => {
-                let sgn = match turn.turn_type {
-                    TurnType::Left => 1.0,
-                    TurnType::Right => -1.0,
-                };
-                let center = self.start.dir.perp().normalize() * turn.radius * sgn + self.start.pos;
+                let center = turn.center(&self.start);
                 let to_start = self.start.pos - center;
 
                 // draw_circle_lines(center.x, center.y, 3.0, 1.0, GREEN);
@@ -107,9 +117,9 @@ impl Segment {
                     TurnType::Right => start_deg - turn.deg,
                 };
                 for (d, color, thickness) in [
-                    (-15.0, BLACK, 30.0),
-                    (-15.5, WHITE, 1.0),
-                    (14.5, WHITE, 1.0),
+                    (-TRACK_WIDTH / 2.0, BLACK, TRACK_WIDTH),
+                    (-TRACK_WIDTH / 2.0 - 0.5, WHITE, 1.0),
+                    (TRACK_WIDTH / 2.0 - 0.5, WHITE, 1.0),
                 ] {
                     draw_arc(
                         center.x,
@@ -130,14 +140,13 @@ impl Segment {
     }
 
     fn bbox(&self) -> rstar::AABB<[f32; 2]> {
-        rstar::AABB::from_points([self.start.pos.into(), self.end().pos.into()].iter())
+        rstar::AABB::from_points([self.start.pos.into(), self.end.pos.into()].iter())
     }
 
     fn hits(&self, pos: &Vec2) -> bool {
         match &self.shape {
             Shape::Straigth(len) => {
-                draw_line(self.start.pos.x, self.start.pos.y, self.end().pos.x, self.end().pos.y, 3.0, YELLOW);
-                let ab = self.end().pos - self.start.pos;
+                let ab = self.end.pos - self.start.pos;
                 let ap = *pos - self.start.pos;
                 let proj = ap.dot(ab) / len;
                 if proj < 0.0 || proj > *len {
@@ -146,9 +155,28 @@ impl Segment {
 
                 let closest = self.start.pos + ab.normalize() * proj;
                 let dist = (*pos - closest).length();
-                dist <= 30.0 / 2.0
-            },
-            Shape::Turn(turn) => false
+                dist <= TRACK_WIDTH / 2.0
+            }
+            Shape::Turn(turn) => {
+                let center = turn.center(&self.start);
+                let to_pos = *pos - center;
+                let len = to_pos.length();
+                if len > turn.radius + TRACK_WIDTH / 2.0 || len < turn.radius - TRACK_WIDTH / 2.0 {
+                    return false;
+                }
+
+                let to_start = self.start.pos - center;
+                let to_end = self.end.pos - center;
+
+                let ab = to_start.perp_dot(to_end);
+                let av = to_start.perp_dot(to_pos);
+                let bv = to_end.perp_dot(to_pos);
+                if ab >= 0.0 {
+                    av >= 0.0 && bv <= 0.0 // CCW
+                } else {
+                    av <= 0.0 && bv >= 0.0 // CW
+                }
+            }
         }
     }
 }
@@ -173,33 +201,36 @@ impl Track {
 
     pub fn draw(&self, view: &Rect) {
         if let Some(rtree) = &self.rtree {
-            let envelope = rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
-            rtree.locate_in_envelope_intersecting(&envelope).for_each(|segment| segment.data.draw());
+            let envelope =
+                rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
+            rtree
+                .locate_in_envelope_intersecting(&envelope)
+                .for_each(|segment| segment.data.draw());
         }
     }
 
-    pub fn hits(&self, pos: &Vec2) {
+    pub fn on_track(&self, pos: &Vec2) -> bool {
         let rtree = &self.rtree.as_ref().unwrap();
 
-        if let Some(segment) = rtree.nearest_neighbor(&[pos.x, pos.y]) {
+        for segment in rtree.nearest_neighbor_iter(&[pos.x, pos.y]).take(2) {
             if segment.data.hits(pos) {
-                draw_circle(pos.x, pos.y, 5.0, YELLOW);
+                // draw_circle(pos.x, pos.y, 5.0, YELLOW);
+                return true;
             }
         }
+        false
     }
 
     fn last_end(&self) -> Waypoint {
         self.segments
             .last()
-            .map(|last| last.end())
+            .map(|last| last.end.clone())
             .unwrap_or_default()
     }
 
     fn add_shape(&mut self, shape: Shape) {
-        self.segments.push(Rc::new(Segment {
-            start: self.last_end(),
-            shape,
-        }));
+        self.segments
+            .push(Rc::new(Segment::new(self.last_end(), shape)));
     }
 
     pub fn add_random_shape(&mut self) {
@@ -226,12 +257,12 @@ impl Track {
         let choice = &choices[gen_range(0, choices.len())];
         let shape = match choice {
             TurnType::Left => Shape::Turn(Turn {
-                radius: gen_range(25.0, 100.0),
+                radius: gen_range(TRACK_WIDTH, 100.0),
                 deg: gen_range(30.0, max_deg_left),
                 turn_type: TurnType::Left,
             }),
             TurnType::Right => Shape::Turn(Turn {
-                radius: gen_range(25.0, 100.0),
+                radius: gen_range(TRACK_WIDTH, 100.0),
                 deg: gen_range(30.0, max_deg_right),
                 turn_type: TurnType::Right,
             }),

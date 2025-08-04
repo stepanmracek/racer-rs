@@ -12,7 +12,7 @@ async fn main() {
     }
     track.compute_rtree();
 
-    let zoom = 2.0;
+    let zoom = 8.0;
     let mut camera = Camera2D {
         target: car.position,
         zoom: vec2(zoom / screen_width(), -zoom / screen_height()),
@@ -30,7 +30,8 @@ async fn main() {
             track.add_random_shape();
             track.compute_rtree();
         }
-        car.update();
+        let on_track = track.on_track(&car.position);
+        car.update(on_track);
 
         camera.rotation = camera.rotation.lerp(-car.rotation.to_degrees() + 90.0, dt);
         camera.target = camera.target.lerp(car.position + vec2(0.0, 50.0), dt);
@@ -38,10 +39,12 @@ async fn main() {
         set_camera(&camera);
 
         let rect = Rect::new(car.position.x - 300.0, car.position.y - 200.0, 600.0, 400.0);
-        draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3.0, WHITE);
+        // draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3.0, WHITE);
         track.draw(&rect);
         car.draw();
-        track.hits(&car.position);
+        /*if on_track {
+            draw_circle(car.position.x, car.position.y, 3.0, YELLOW);
+        }*/
 
         next_frame().await;
     }
