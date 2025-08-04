@@ -132,6 +132,25 @@ impl Segment {
     fn bbox(&self) -> rstar::AABB<[f32; 2]> {
         rstar::AABB::from_points([self.start.pos.into(), self.end().pos.into()].iter())
     }
+
+    fn hits(&self, pos: &Vec2) -> bool {
+        match &self.shape {
+            Shape::Straigth(len) => {
+                draw_line(self.start.pos.x, self.start.pos.y, self.end().pos.x, self.end().pos.y, 3.0, YELLOW);
+                let ab = self.end().pos - self.start.pos;
+                let ap = *pos - self.start.pos;
+                let proj = ap.dot(ab) / len;
+                if proj < 0.0 || proj > *len {
+                    return false;
+                }
+
+                let closest = self.start.pos + ab.normalize() * proj;
+                let dist = (*pos - closest).length();
+                dist <= 30.0 / 2.0
+            },
+            Shape::Turn(turn) => false
+        }
+    }
 }
 
 type TreeNode =
@@ -156,6 +175,16 @@ impl Track {
         if let Some(rtree) = &self.rtree {
             let envelope = rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
             rtree.locate_in_envelope_intersecting(&envelope).for_each(|segment| segment.data.draw());
+        }
+    }
+
+    pub fn hits(&self, pos: &Vec2) {
+        let rtree = &self.rtree.as_ref().unwrap();
+
+        if let Some(segment) = rtree.nearest_neighbor(&[pos.x, pos.y]) {
+            if segment.data.hits(pos) {
+                draw_circle(pos.x, pos.y, 5.0, YELLOW);
+            }
         }
     }
 

@@ -41,6 +41,7 @@ async fn main() {
         draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3.0, WHITE);
         track.draw(&rect);
         car.draw();
+        track.hits(&car.position);
 
         next_frame().await;
     }
