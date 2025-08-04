@@ -238,12 +238,12 @@ impl Track {
             .rotate(self.last_end().dir)
             .to_angle()
             .to_degrees();
-        assert!(last_deg >= -90.0 && last_deg <= 90.0);
+        assert!((-90.0..=90.0).contains(&last_deg));
 
         let max_deg_left = 90.0 - last_deg;
         let max_deg_right = 90.0 + last_deg;
-        assert!(max_deg_left >= 0.0 && max_deg_left <= 180.0);
-        assert!(max_deg_right >= 0.0 && max_deg_right <= 180.0);
+        assert!((0.0..=180.0).contains(&max_deg_left));
+        assert!((0.0..=180.0).contains(&max_deg_right));
 
         let mut choices = vec![];
         if max_deg_left >= 30.0 {
