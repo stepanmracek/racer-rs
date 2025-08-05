@@ -1,12 +1,15 @@
 use macroquad::prelude::*;
 use std::f32::consts::FRAC_PI_2;
 
+use crate::track::Track;
+
 pub struct Car {
     texture: Texture2D,
     pub position: Vec2,
     pub rotation: f32,
     velocity: Vec2,
     speed: f32,
+    wheels: [Vec2; 4],
 }
 
 impl Car {
@@ -17,13 +20,24 @@ impl Car {
             rotation: FRAC_PI_2,
             velocity: vec2(0.0, 0.0),
             speed: 0.0,
+            wheels: [
+                vec2(5.0, 7.0),
+                vec2(-5.0, 7.0),
+                vec2(5.0, -7.0),
+                vec2(-5.0, -7.0),
+            ],
         }
     }
 
-    pub fn update(&mut self, on_track: bool) {
+    pub fn update(&mut self, wheels_on_track: &[bool; 4]) {
         let rotation_speed = 1.0;
         let acceleration = 100.0;
-        let friction = if on_track { 0.98 } else { 0.8 };
+        let penalty = wheels_on_track
+            .iter()
+            .filter(|&&on_track| !on_track)
+            .map(|_| 0.95)
+            .product::<f32>();
+        let friction = 0.98 * penalty;
         let dt = get_frame_time();
 
         if is_key_down(KeyCode::Up) {
@@ -48,19 +62,8 @@ impl Car {
         self.position += self.velocity * dt;
     }
 
-    pub fn draw(&self) {
-        /*let car_size = vec2(25.0, 11.0);
-        draw_rectangle_ex(
-            self.position.x,
-            self.position.y,
-            car_size.x,
-            car_size.y,
-            DrawRectangleParams {
-                offset: vec2(0.5, 0.5),
-                rotation: self.rotation,
-                color: BLUE,
-            },
-        );*/
+    pub fn draw(&self, wheels_on_track: &[bool; 4]) {
+        let draw_rot = self.rotation - FRAC_PI_2;
         draw_texture_ex(
             &self.texture,
             self.position.x - self.texture.width() / 40.0,
@@ -69,9 +72,31 @@ impl Car {
             DrawTextureParams {
                 dest_size: Some(self.texture.size() / 20.0),
                 flip_y: true,
-                rotation: self.rotation - FRAC_PI_2,
+                rotation: draw_rot,
                 ..Default::default()
             },
         );
+
+        let orientation = Vec2::from_angle(draw_rot);
+        for (&wheel, &on_track) in self.wheels.iter().zip(wheels_on_track) {
+            let pos = self.position + orientation.rotate(wheel);
+            if on_track {
+                draw_circle(pos.x, pos.y, 1.5, YELLOW);
+            }
+        }
+    }
+
+    pub fn wheels_on_track(&self, track: &Track) -> [bool; 4] {
+        let orientation = Vec2::from_angle(self.rotation - FRAC_PI_2);
+        let mut ans = [false; 4];
+        for (i, wheel) in self.wheels.iter().enumerate() {
+            let pos = self.position + orientation.rotate(*wheel);
+            let on_track = track.on_track(&pos);
+            ans[i] = on_track;
+            if on_track {
+                draw_circle(pos.x, pos.y, 1.5, YELLOW);
+            }
+        }
+        ans
     }
 }
