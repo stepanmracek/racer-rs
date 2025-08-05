@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_4};
 
 use crate::track::Track;
 
@@ -7,30 +7,48 @@ pub struct Car {
     texture: Texture2D,
     pub position: Vec2,
     pub rotation: f32,
-    velocity: Vec2,
-    speed: f32,
+    velocity: f32,
+    steering_angle: f32,
     wheels: [Vec2; 4],
+    wheel_base: f32,
 }
 
 impl Car {
     pub async fn new(x: f32, y: f32) -> Self {
+        let wheel_base = 14.0;
         Self {
             texture: load_texture("assets/car.png").await.unwrap(),
             position: vec2(x, y),
             rotation: FRAC_PI_2,
-            velocity: vec2(0.0, 0.0),
-            speed: 0.0,
+            velocity: 0.0,
+            steering_angle: 0.0,
+            wheel_base,
             wheels: [
-                vec2(5.0, 7.0),
-                vec2(-5.0, 7.0),
-                vec2(5.0, -7.0),
-                vec2(-5.0, -7.0),
+                vec2(5.0, wheel_base),
+                vec2(-5.0, wheel_base),
+                vec2(5.0, 0.0),
+                vec2(-5.0, 0.0),
             ],
         }
     }
 
     pub fn update(&mut self, wheels_on_track: &[bool; 4]) {
-        let rotation_speed = 1.0 * self.speed.signum();
+        let dt = get_frame_time();
+        let (left, right) = (is_key_down(KeyCode::Left), is_key_down(KeyCode::Right));
+        let (up, down) = (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down));
+
+        let turn_speed = 0.5;
+        if left {
+            self.steering_angle += turn_speed * dt;
+        }
+        if right {
+            self.steering_angle -= turn_speed * dt;
+        }
+        if !left && !right {
+            self.steering_angle = self.steering_angle.lerp(0.0, (10.0 * dt).clamp(0.0, 1.0));
+        }
+        self.steering_angle = self.steering_angle.clamp(-FRAC_PI_4, FRAC_PI_4);
+
         let acceleration = 100.0;
         let penalty = wheels_on_track
             .iter()
@@ -38,42 +56,66 @@ impl Car {
             .map(|_| 0.95)
             .product::<f32>();
         let friction = 0.98 * penalty;
-        let dt = get_frame_time();
 
-        if is_key_down(KeyCode::Up) {
-            self.speed += acceleration * dt;
+        if up {
+            self.velocity += acceleration * dt;
         }
-        if is_key_down(KeyCode::Down) {
-            self.speed -= acceleration * dt;
+        if down {
+            self.velocity -= acceleration * dt;
         }
+        self.velocity *= friction;
 
-        // Rotation only when moving
-        if self.speed.abs() > 5.0 {
-            if is_key_down(KeyCode::Left) {
-                self.rotation += rotation_speed * dt;
-            }
-            if is_key_down(KeyCode::Right) {
-                self.rotation -= rotation_speed * dt;
-            }
-        }
+        let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
+        let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
+        self.position += pos_dot * dt;
+        self.rotation += theta_dot * dt;
 
-        self.speed *= friction;
-        self.velocity = vec2(self.rotation.cos(), self.rotation.sin()) * self.speed;
-        self.position += self.velocity * dt;
+        println!(
+            "steering: {:.3}, velocity: {:.3}",
+            self.steering_angle, self.velocity
+        );
     }
 
     pub fn draw(&self, wheels_on_track: &[bool; 4]) {
         let draw_rot = self.rotation - FRAC_PI_2;
+        let rot_vec = Vec2::from_angle(self.rotation);
+        let texture_pos = (self.position + rot_vec * self.wheel_base / 2.0)
+            - vec2(self.texture.width() / 40.0, self.texture.height() / 40.0);
         draw_texture_ex(
             &self.texture,
-            self.position.x - self.texture.width() / 40.0,
-            self.position.y - self.texture.height() / 40.0,
+            texture_pos.x,
+            texture_pos.y,
             WHITE,
             DrawTextureParams {
                 dest_size: Some(self.texture.size() / 20.0),
                 flip_y: true,
                 rotation: draw_rot,
                 ..Default::default()
+            },
+        );
+
+        draw_rectangle_ex(
+            self.position.x,
+            self.position.y,
+            2.0,
+            5.0,
+            DrawRectangleParams {
+                rotation: draw_rot,
+                color: BLACK,
+                offset: vec2(0.5, 0.5),
+            },
+        );
+
+        let front_wheel_pos = self.position + rot_vec * self.wheel_base;
+        draw_rectangle_ex(
+            front_wheel_pos.x,
+            front_wheel_pos.y,
+            2.0,
+            5.0,
+            DrawRectangleParams {
+                rotation: draw_rot + self.steering_angle,
+                color: BLACK,
+                offset: vec2(0.5, 0.5),
             },
         );
 
