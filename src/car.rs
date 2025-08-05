@@ -30,7 +30,7 @@ impl Car {
     }
 
     pub fn update(&mut self, wheels_on_track: &[bool; 4]) {
-        let rotation_speed = 1.0;
+        let rotation_speed = 1.0 * self.speed.signum();
         let acceleration = 100.0;
         let penalty = wheels_on_track
             .iter()
@@ -93,9 +93,6 @@ impl Car {
             let pos = self.position + orientation.rotate(*wheel);
             let on_track = track.on_track(&pos);
             ans[i] = on_track;
-            if on_track {
-                draw_circle(pos.x, pos.y, 1.5, YELLOW);
-            }
         }
         ans
     }

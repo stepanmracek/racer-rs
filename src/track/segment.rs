@@ -33,10 +33,11 @@ impl Segment {
     }
 
     pub fn draw(&self) {
+        let track_color = Color::from_rgba(32, 32, 32, 255);
         match self.shape {
             Shape::Straigth(_len) => {
                 for (d, color, thickness) in [
-                    (0.0, BLACK, TRACK_WIDTH),
+                    (0.0, track_color, TRACK_WIDTH),
                     (-TRACK_WIDTH / 2.0, WHITE, 1.0),
                     (TRACK_WIDTH / 2.0, WHITE, 1.0),
                 ] {
@@ -66,7 +67,7 @@ impl Segment {
                     TurnType::Right => start_deg - turn.deg,
                 };
                 for (d, color, thickness) in [
-                    (-TRACK_WIDTH / 2.0, BLACK, TRACK_WIDTH),
+                    (-TRACK_WIDTH / 2.0, track_color, TRACK_WIDTH),
                     (-TRACK_WIDTH / 2.0 - 0.5, WHITE, 1.0),
                     (TRACK_WIDTH / 2.0 - 0.5, WHITE, 1.0),
                 ] {

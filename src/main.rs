@@ -47,6 +47,13 @@ async fn main() {
         track.draw(&rect);
         car.draw(&wheels_on_track);
 
+        set_default_camera();
+        let time = get_time();
+        let seconds = time as usize;
+        let hundredths = ((time - (seconds as f64)) * 100.0) as usize;
+        let stopwatch = format!("{seconds:03}:{hundredths:02}");
+        draw_text(&stopwatch, 5.0, 24.0, 32.0, WHITE);
+
         next_frame().await;
     }
 }
