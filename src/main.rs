@@ -38,7 +38,7 @@ async fn main() {
         let car_rotation = car.rotation - FRAC_PI_2;
         let shift = Vec2::from_angle(car_rotation).rotate(vec2(0.0, 50.0));
         camera.rotation = camera.rotation.lerp(-car_rotation.to_degrees(), dt);
-        camera.target = camera.target.lerp(car.position + shift, dt);
+        camera.target = camera.target.lerp(car.position + shift, 5.0 * dt);
         camera.zoom = vec2(zoom / screen_width(), -zoom / screen_height());
         set_camera(&camera);
 

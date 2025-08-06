@@ -24,10 +24,10 @@ impl Car {
             steering_angle: 0.0,
             wheel_base,
             wheels: [
-                vec2(5.0, wheel_base),  // front right
-                vec2(-5.0, wheel_base), // front left
-                vec2(5.0, 0.0),         // rear right
-                vec2(-5.0, 0.0),        // rear left
+                vec2(4.5, wheel_base),  // front right
+                vec2(-4.5, wheel_base), // front left
+                vec2(4.5, 0.0),         // rear right
+                vec2(-4.5, 0.0),        // rear left
             ],
         }
     }
@@ -85,11 +85,11 @@ impl Car {
             draw_rectangle_ex(
                 wheel_pos.x,
                 wheel_pos.y,
-                2.0,
-                5.0,
+                1.5,
+                3.0,
                 DrawRectangleParams {
                     rotation: wheel_rot,
-                    color: if on_track { GREEN } else { RED },
+                    color: if on_track { BLACK } else { RED },
                     offset: vec2(0.5, 0.5),
                 },
             );
