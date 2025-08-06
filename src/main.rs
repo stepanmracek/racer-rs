@@ -48,10 +48,11 @@ async fn main() {
         car.draw(&wheels_on_track);
 
         set_default_camera();
-        let time = get_time();
-        let seconds = time as usize;
-        let hundredths = ((time - (seconds as f64)) * 100.0) as usize;
-        let stopwatch = format!("{seconds:03}:{hundredths:02}");
+        let time = (get_time() * 100.0) as usize;
+        let hundrets = time % 100;
+        let seconds = (time / 100) % 60;
+        let minutes = time / 6000;
+        let stopwatch = format!("{minutes:02}:{seconds:02}:{hundrets:02}");
         draw_text(&stopwatch, 5.0, 24.0, 32.0, WHITE);
 
         next_frame().await;
