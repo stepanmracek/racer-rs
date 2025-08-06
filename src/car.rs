@@ -24,10 +24,10 @@ impl Car {
             steering_angle: 0.0,
             wheel_base,
             wheels: [
-                vec2(5.0, wheel_base),
-                vec2(-5.0, wheel_base),
-                vec2(5.0, 0.0),
-                vec2(-5.0, 0.0),
+                vec2(5.0, wheel_base),  // front right
+                vec2(-5.0, wheel_base), // front left
+                vec2(5.0, 0.0),         // rear right
+                vec2(-5.0, 0.0),        // rear left
             ],
         }
     }
@@ -37,7 +37,7 @@ impl Car {
         let (left, right) = (is_key_down(KeyCode::Left), is_key_down(KeyCode::Right));
         let (up, down) = (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down));
 
-        let turn_speed = 0.5;
+        let turn_speed = FRAC_PI_4;
         if left {
             self.steering_angle += turn_speed * dt;
         }
@@ -49,13 +49,13 @@ impl Car {
         }
         self.steering_angle = self.steering_angle.clamp(-FRAC_PI_4, FRAC_PI_4);
 
-        let acceleration = 100.0;
+        let acceleration = 50.0;
         let penalty = wheels_on_track
             .iter()
             .filter(|&&on_track| !on_track)
             .map(|_| 0.95)
             .product::<f32>();
-        let friction = 0.98 * penalty;
+        let friction = 0.995 * penalty;
 
         if up {
             self.velocity += acceleration * dt;
@@ -69,16 +69,32 @@ impl Car {
         let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
         self.position += pos_dot * dt;
         self.rotation += theta_dot * dt;
-
-        println!(
-            "steering: {:.3}, velocity: {:.3}",
-            self.steering_angle, self.velocity
-        );
     }
 
     pub fn draw(&self, wheels_on_track: &[bool; 4]) {
         let draw_rot = self.rotation - FRAC_PI_2;
         let rot_vec = Vec2::from_angle(self.rotation);
+
+        let orientation = Vec2::from_angle(draw_rot);
+        for (i, (&wheel, &on_track)) in self.wheels.iter().zip(wheels_on_track).enumerate() {
+            let wheel_pos = self.position + orientation.rotate(wheel);
+            let mut wheel_rot = draw_rot;
+            if i < 2 {
+                wheel_rot += self.steering_angle;
+            }
+            draw_rectangle_ex(
+                wheel_pos.x,
+                wheel_pos.y,
+                2.0,
+                5.0,
+                DrawRectangleParams {
+                    rotation: wheel_rot,
+                    color: if on_track { GREEN } else { RED },
+                    offset: vec2(0.5, 0.5),
+                },
+            );
+        }
+
         let texture_pos = (self.position + rot_vec * self.wheel_base / 2.0)
             - vec2(self.texture.width() / 40.0, self.texture.height() / 40.0);
         draw_texture_ex(
@@ -93,39 +109,6 @@ impl Car {
                 ..Default::default()
             },
         );
-
-        draw_rectangle_ex(
-            self.position.x,
-            self.position.y,
-            2.0,
-            5.0,
-            DrawRectangleParams {
-                rotation: draw_rot,
-                color: BLACK,
-                offset: vec2(0.5, 0.5),
-            },
-        );
-
-        let front_wheel_pos = self.position + rot_vec * self.wheel_base;
-        draw_rectangle_ex(
-            front_wheel_pos.x,
-            front_wheel_pos.y,
-            2.0,
-            5.0,
-            DrawRectangleParams {
-                rotation: draw_rot + self.steering_angle,
-                color: BLACK,
-                offset: vec2(0.5, 0.5),
-            },
-        );
-
-        let orientation = Vec2::from_angle(draw_rot);
-        for (&wheel, &on_track) in self.wheels.iter().zip(wheels_on_track) {
-            let pos = self.position + orientation.rotate(wheel);
-            if on_track {
-                draw_circle(pos.x, pos.y, 1.5, YELLOW);
-            }
-        }
     }
 
     pub fn wheels_on_track(&self, track: &Track) -> [bool; 4] {
