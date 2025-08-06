@@ -2,7 +2,7 @@ use super::segment::*;
 use super::shape::*;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
-use macroquad::rand::gen_range;
+use macroquad::rand::{gen_range, rand};
 use std::f32::consts::FRAC_PI_2;
 use std::rc::Rc;
 
@@ -59,6 +59,11 @@ impl Track {
     }
 
     pub fn add_random_shape(&mut self) {
+        if (rand() as f32 / u32::MAX as f32) < 0.5 {
+            self.add_shape(Shape::Straigth(gen_range(10.0, 50.0)));
+            return;
+        }
+
         let last_deg = Vec2::from_angle(-FRAC_PI_2)
             .rotate(self.last_end().dir)
             .to_angle()
