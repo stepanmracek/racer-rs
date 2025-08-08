@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
-use std::f32::consts::{FRAC_PI_2, FRAC_PI_4};
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
 
-use crate::track::Track;
+use crate::{physics::RotRect, track::Track};
 
 pub struct Car {
     texture: Texture2D,
@@ -11,15 +11,18 @@ pub struct Car {
     steering_angle: f32,
     wheels: [Vec2; 4],
     wheel_base: f32,
+    bbox: RotRect,
 }
 
 impl Car {
     pub async fn new(x: f32, y: f32) -> Self {
         let wheel_base = 14.0;
+        let position = vec2(x, y);
+        let rotation = FRAC_PI_2;
         Self {
             texture: load_texture("assets/car.png").await.unwrap(),
-            position: vec2(x, y),
-            rotation: FRAC_PI_2,
+            position,
+            rotation,
             velocity: 0.0,
             steering_angle: 0.0,
             wheel_base,
@@ -29,6 +32,11 @@ impl Car {
                 vec2(4.5, 0.0),         // rear right
                 vec2(-4.5, 0.0),        // rear left
             ],
+            bbox: RotRect::new(
+                position + Vec2::from_angle(rotation) * wheel_base / 2.0,
+                vec2(10.0, 25.0),
+                0.0,
+            ),
         }
     }
 
@@ -37,7 +45,7 @@ impl Car {
         let (left, right) = (is_key_down(KeyCode::Left), is_key_down(KeyCode::Right));
         let (up, down) = (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down));
 
-        let turn_speed = FRAC_PI_4;
+        let turn_speed = FRAC_PI_6;
         if left {
             self.steering_angle += turn_speed * dt;
         }
@@ -47,13 +55,13 @@ impl Car {
         if !left && !right {
             self.steering_angle = self.steering_angle.lerp(0.0, (10.0 * dt).clamp(0.0, 1.0));
         }
-        self.steering_angle = self.steering_angle.clamp(-FRAC_PI_4, FRAC_PI_4);
+        self.steering_angle = self.steering_angle.clamp(-FRAC_PI_6, FRAC_PI_6);
 
         let acceleration = 50.0;
         let penalty = wheels_on_track
             .iter()
             .filter(|&&on_track| !on_track)
-            .map(|_| 0.95)
+            .map(|_| 0.99)
             .product::<f32>();
         let friction = 0.995 * penalty;
 
@@ -69,13 +77,30 @@ impl Car {
         let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
         self.position += pos_dot * dt;
         self.rotation += theta_dot * dt;
+        self.bbox.update(
+            self.position + Vec2::from_angle(self.rotation) * self.wheel_base / 2.0,
+            self.rotation - FRAC_PI_2,
+        );
     }
 
     pub fn draw(&self, wheels_on_track: &[bool; 4]) {
         let draw_rot = self.rotation - FRAC_PI_2;
         let rot_vec = Vec2::from_angle(self.rotation);
-
         let orientation = Vec2::from_angle(draw_rot);
+
+        draw_rectangle_lines_ex(
+            self.bbox.center().x,
+            self.bbox.center().y,
+            self.bbox.size().x,
+            self.bbox.size().y,
+            0.5,
+            DrawRectangleParams {
+                offset: vec2(0.5, 0.5),
+                rotation: *self.bbox.rotation(),
+                color: YELLOW.with_alpha(0.5),
+            },
+        );
+
         for (i, (&wheel, &on_track)) in self.wheels.iter().zip(wheels_on_track).enumerate() {
             let wheel_pos = self.position + orientation.rotate(wheel);
             let mut wheel_rot = draw_rot;
@@ -120,5 +145,9 @@ impl Car {
             ans[i] = on_track;
         }
         ans
+    }
+
+    pub fn bbox(&self) -> &RotRect {
+        &self.bbox
     }
 }

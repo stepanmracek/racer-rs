@@ -2,7 +2,10 @@ use std::f32::consts::FRAC_PI_2;
 
 use macroquad::prelude::*;
 
+use crate::physics::RotRect;
+
 mod car;
+mod physics;
 mod track;
 
 #[macroquad::main("racer")]
@@ -21,6 +24,8 @@ async fn main() {
         rotation: -car.rotation.to_degrees() + 90.0,
         ..Default::default()
     };
+
+    let collider = RotRect::new(vec2(0.0, 64.0), vec2(15.0, 42.0), 0.1);
 
     set_camera(&camera);
 
@@ -46,6 +51,24 @@ async fn main() {
         // draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3.0, WHITE);
         track.draw(&rect);
         car.draw(&wheels_on_track);
+
+        let collider_color = if collider.collide(car.bbox()) {
+            RED
+        } else {
+            GREEN
+        };
+        draw_rectangle_lines_ex(
+            collider.center().x,
+            collider.center().y,
+            collider.size().x,
+            collider.size().y,
+            1.0,
+            DrawRectangleParams {
+                offset: vec2(0.5, 0.5),
+                rotation: *collider.rotation(),
+                color: collider_color,
+            },
+        );
 
         set_default_camera();
         let time = (get_time() * 100.0) as usize;
