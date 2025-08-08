@@ -25,7 +25,7 @@ async fn main() {
         ..Default::default()
     };
 
-    let collider = RotRect::new(vec2(0.0, 64.0), vec2(15.0, 42.0), 0.1);
+    let collider = RotRect::new(vec2(16.0, 128.0), vec2(15.0, 42.0), 0.1);
 
     set_camera(&camera);
 

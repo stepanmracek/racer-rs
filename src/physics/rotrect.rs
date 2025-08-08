@@ -90,13 +90,11 @@ impl RotRect {
             return false;
         }
 
-        let mut intersection_count = 0;
         for (first, second) in [(&self, &other), (&other, &self)] {
             for (axis_start, axis_end) in first.axes.iter() {
                 let mut ts = vec![];
                 for corner in second.corners.iter() {
-                    let (pos, t) = projection_on_line(axis_start, axis_end, corner);
-                    draw_circle(pos.x, pos.y, 1.0, PINK);
+                    let (_, t) = projection_on_line(axis_start, axis_end, corner);
                     ts.push(t);
                 }
                 let r = min_max(&mut ts.into_iter());
@@ -104,13 +102,13 @@ impl RotRect {
                 let start_in = hit_range.contains(r.start());
                 let end_in = hit_range.contains(r.end());
                 let hit = start_in || end_in || (*r.start() <= 0.0 && *r.end() >= 1.0);
-                if hit {
-                    intersection_count += 1;
+                if !hit {
+                    return false;
                 }
             }
         }
 
-        intersection_count == 4
+        true
     }
 }
 
