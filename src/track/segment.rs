@@ -1,3 +1,5 @@
+use std::f32::consts::FRAC_PI_2;
+
 use super::constant::*;
 use super::shape::*;
 use macroquad::prelude::*;
@@ -11,8 +13,8 @@ pub struct Segment {
 impl Segment {
     pub fn new(start: Waypoint, shape: Shape) -> Self {
         let end = match shape {
-            Shape::Straigth(len) => Waypoint {
-                pos: start.pos + start.dir * len,
+            Shape::Straight(ref straight) => Waypoint {
+                pos: start.pos + start.dir * straight.length,
                 dir: start.dir,
             },
             Shape::Turn(ref turn) => {
@@ -35,7 +37,7 @@ impl Segment {
     pub fn draw(&self) {
         let track_color = Color::from_rgba(32, 32, 32, 255);
         match self.shape {
-            Shape::Straigth(_len) => {
+            Shape::Straight(ref straight) => {
                 for (d, color, thickness) in [
                     (0.0, track_color, TRACK_WIDTH),
                     (-TRACK_WIDTH / 2.0, WHITE, 1.0),
@@ -54,6 +56,22 @@ impl Segment {
                         thickness,
                         color,
                     );
+
+                    if straight.is_finish {
+                        let middle = self.start.pos.midpoint(self.end.pos);
+                        let orientation = self.end.pos - self.start.pos;
+                        draw_rectangle_ex(
+                            middle.x,
+                            middle.y,
+                            TRACK_WIDTH,
+                            20.0,
+                            DrawRectangleParams {
+                                offset: vec2(0.5, 0.5),
+                                rotation: orientation.to_angle() - FRAC_PI_2,
+                                color: WHITE,
+                            },
+                        );
+                    }
                 }
             }
             Shape::Turn(ref turn) => {
@@ -95,11 +113,11 @@ impl Segment {
 
     pub fn hits(&self, pos: &Vec2) -> bool {
         match &self.shape {
-            Shape::Straigth(len) => {
+            Shape::Straight(straight) => {
                 let ab = self.end.pos - self.start.pos;
                 let ap = *pos - self.start.pos;
-                let proj = ap.dot(ab) / len;
-                if proj < 0.0 || proj > *len {
+                let proj = ap.dot(ab) / straight.length;
+                if proj < 0.0 || proj > straight.length {
                     return false;
                 }
 

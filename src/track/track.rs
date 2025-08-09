@@ -1,5 +1,6 @@
 use super::segment::*;
 use super::shape::*;
+use crate::physics::RotRect;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
@@ -12,6 +13,7 @@ type TreeNode =
 pub struct Track {
     segments: Vec<Rc<Segment>>,
     rtree: Option<rstar::RTree<TreeNode>>,
+    finish: Option<RotRect>,
 }
 
 impl Track {
@@ -19,8 +21,12 @@ impl Track {
         let mut track = Self {
             segments: vec![],
             rtree: None,
+            finish: None,
         };
-        track.add_shape(Shape::Straigth(100.0));
+        track.add_shape(Shape::Straight(Straight {
+            length: 100.0,
+            is_finish: false,
+        }));
         track
     }
 
@@ -46,6 +52,14 @@ impl Track {
         false
     }
 
+    pub fn finish(&self, car_bbox: &RotRect) -> bool {
+        if let Some(finish) = &self.finish {
+            finish.collide(car_bbox)
+        } else {
+            false
+        }
+    }
+
     fn last_end(&self) -> Waypoint {
         self.segments
             .last()
@@ -60,7 +74,10 @@ impl Track {
 
     pub fn add_random_shape(&mut self) {
         if (rand() as f32 / u32::MAX as f32) < 0.5 {
-            self.add_shape(Shape::Straigth(gen_range(10.0, 50.0)));
+            self.add_shape(Shape::Straight(Straight {
+                length: gen_range(10.0, 50.0),
+                is_finish: false,
+            }));
             return;
         }
 
@@ -99,6 +116,19 @@ impl Track {
         };
 
         self.add_shape(shape);
+    }
+
+    pub fn add_finish(&mut self) {
+        self.add_shape(Shape::Straight(Straight {
+            length: 100.0,
+            is_finish: true,
+        }));
+
+        let last = self.segments.last().unwrap();
+        let center = last.start.pos.midpoint(last.end.pos);
+        let size = vec2(20.0, TRACK_WIDTH);
+        let rotation = (last.end.pos - last.start.pos).to_angle();
+        self.finish = Some(RotRect::new(center, size, rotation));
     }
 
     pub fn compute_rtree(&mut self) {

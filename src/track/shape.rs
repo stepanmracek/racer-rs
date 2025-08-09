@@ -45,7 +45,12 @@ impl Turn {
     }
 }
 
+pub struct Straight {
+    pub length: f32,
+    pub is_finish: bool,
+}
+
 pub enum Shape {
-    Straigth(f32),
+    Straight(Straight),
     Turn(Turn),
 }

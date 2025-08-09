@@ -88,19 +88,6 @@ impl Car {
         let rot_vec = Vec2::from_angle(self.rotation);
         let orientation = Vec2::from_angle(draw_rot);
 
-        draw_rectangle_lines_ex(
-            self.bbox.center().x,
-            self.bbox.center().y,
-            self.bbox.size().x,
-            self.bbox.size().y,
-            0.5,
-            DrawRectangleParams {
-                offset: vec2(0.5, 0.5),
-                rotation: *self.bbox.rotation(),
-                color: YELLOW.with_alpha(0.5),
-            },
-        );
-
         for (i, (&wheel, &on_track)) in self.wheels.iter().zip(wheels_on_track).enumerate() {
             let wheel_pos = self.position + orientation.rotate(wheel);
             let mut wheel_rot = draw_rot;

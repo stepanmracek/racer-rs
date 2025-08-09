@@ -107,7 +107,6 @@ impl RotRect {
                 }
             }
         }
-
         true
     }
 }
