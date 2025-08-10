@@ -89,7 +89,7 @@ impl State for Game {
         );
         // draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 3.0, WHITE);
         world.track.draw(&rect);
-        world.car.draw(&wheels_on_track);
+        world.car.draw();
 
         set_default_camera();
         let time = (get_time() * 100.0) as usize;

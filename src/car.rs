@@ -83,12 +83,12 @@ impl Car {
         );
     }
 
-    pub fn draw(&self, wheels_on_track: &[bool; 4]) {
+    pub fn draw(&self) {
         let draw_rot = self.rotation - FRAC_PI_2;
         let rot_vec = Vec2::from_angle(self.rotation);
         let orientation = Vec2::from_angle(draw_rot);
 
-        for (i, (&wheel, &on_track)) in self.wheels.iter().zip(wheels_on_track).enumerate() {
+        for (i, &wheel) in self.wheels.iter().enumerate() {
             let wheel_pos = self.position + orientation.rotate(wheel);
             let mut wheel_rot = draw_rot;
             if i < 2 {
@@ -101,7 +101,7 @@ impl Car {
                 3.0,
                 DrawRectangleParams {
                     rotation: wheel_rot,
-                    color: if on_track { BLACK } else { RED },
+                    color: BLACK,
                     offset: vec2(0.5, 0.5),
                 },
             );
