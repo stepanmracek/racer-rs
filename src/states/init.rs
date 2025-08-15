@@ -1,19 +1,37 @@
 use crate::{
+    follow_camera::FollowCamera,
     states::{State, game::Game},
     world::World,
 };
 use macroquad::prelude::*;
 
-pub struct Init {}
+pub struct Init {
+    follow_camera: FollowCamera,
+}
+
+impl Init {
+    pub fn new(world: &World) -> Self {
+        let follow_camera = FollowCamera::new(&world.car);
+        Self { follow_camera }
+    }
+}
 
 impl State for Init {
-    fn step(&mut self, world: &mut World) -> Option<Box<dyn State>> {
-        set_default_camera();
-        draw_text("Press space to start", 5.0, 24.0, 32.0, WHITE);
+    fn step(&mut self, _world: &mut World) -> Option<Box<dyn State>> {
         if is_key_pressed(KeyCode::Space) {
-            Some(Box::new(Game::new(world)))
+            Some(Box::new(Game::new(&self.follow_camera)))
         } else {
             None
         }
+    }
+
+    fn draw(&mut self, world: &World) {
+        clear_background(DARKGREEN);
+        self.follow_camera.update(&world.car);
+        world.track.draw(&world.car);
+        world.car.draw();
+
+        set_default_camera();
+        draw_text("Press space to start", 5.0, 24.0, 32.0, WHITE);
     }
 }

@@ -10,8 +10,8 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(world: &World) -> Self {
-        let follow_camera = FollowCamera::new(&world.car);
+    pub fn new(follow_camera: &FollowCamera) -> Self {
+        let follow_camera = follow_camera.clone();
         Self { follow_camera }
     }
 
@@ -28,19 +28,21 @@ impl Game {
 
 impl State for Game {
     fn step(&mut self, world: &mut World) -> Option<Box<dyn State>> {
-        clear_background(DARKGREEN);
-
         let wheels_on_track = world.car.wheels_on_track(&world.track);
         world.car.update(&wheels_on_track);
-        self.follow_camera.update(&world.car);
-        world.track.draw(&world.car);
-        world.car.draw();
-        self.draw_stopwatch();
 
         if world.track.finish(world.car.bbox()) {
             Some(Box::new(Finish {}))
         } else {
             None
         }
+    }
+
+    fn draw(&mut self, world: &World) {
+        clear_background(DARKGREEN);
+        self.follow_camera.update(&world.car);
+        world.track.draw(&world.car);
+        world.car.draw();
+        self.draw_stopwatch();
     }
 }

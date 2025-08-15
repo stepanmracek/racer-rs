@@ -10,12 +10,14 @@ mod world;
 #[macroquad::main("racer")]
 async fn main() {
     let mut world = world::World::new().await;
-    let mut state: Box<dyn states::State> = Box::new(states::Init {});
+    let mut state: Box<dyn states::State> = Box::new(states::Init::new(&world));
 
     loop {
         if let Some(next_state) = state.step(&mut world) {
             state = next_state;
         }
+
+        state.draw(&world);
 
         next_frame().await;
     }

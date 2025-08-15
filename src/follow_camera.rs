@@ -29,3 +29,19 @@ impl FollowCamera {
         set_camera(&self.camera_2d);
     }
 }
+
+impl Clone for FollowCamera {
+    fn clone(&self) -> Self {
+        Self {
+            zoom: self.zoom,
+            camera_2d: Camera2D {
+                rotation: self.camera_2d.rotation,
+                zoom: self.camera_2d.zoom,
+                target: self.camera_2d.target,
+                offset: self.camera_2d.offset,
+                render_target: self.camera_2d.render_target.clone(),
+                viewport: self.camera_2d.viewport,
+            },
+        }
+    }
+}
