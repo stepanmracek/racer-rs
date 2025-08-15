@@ -1,5 +1,6 @@
 use super::segment::*;
 use super::shape::*;
+use crate::car::Car;
 use crate::physics::RotRect;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
@@ -30,8 +31,10 @@ impl Track {
         track
     }
 
-    pub fn draw(&self, view: &Rect) {
+    pub fn draw(&self, car: &Car) {
         if let Some(rtree) = &self.rtree {
+            let view = Rect::new(car.position.x - 300.0, car.position.y - 200.0, 600.0, 400.0);
+            //draw_rectangle_lines(view.x, view.y, view.w, view.h, 3.0, WHITE);
             let envelope =
                 rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
             rtree
