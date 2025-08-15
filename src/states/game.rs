@@ -32,7 +32,7 @@ impl State for Game {
         world.car.update(&wheels_on_track);
 
         if world.track.finish(world.car.bbox()) {
-            Some(Box::new(Finish {}))
+            Some(Box::new(Finish::new(&self.follow_camera)))
         } else {
             None
         }
