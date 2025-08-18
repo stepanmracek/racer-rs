@@ -5,6 +5,7 @@ mod follow_camera;
 mod physics;
 mod states;
 mod track;
+mod utils;
 mod world;
 
 #[macroquad::main("racer")]

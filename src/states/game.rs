@@ -1,28 +1,33 @@
 use crate::{
     follow_camera::FollowCamera,
     states::{State, finish::Finish},
+    utils::format_time,
     world::World,
 };
 use macroquad::prelude::*;
 
 pub struct Game {
     follow_camera: FollowCamera,
+    state_started: f64,
 }
 
 impl Game {
     pub fn new(follow_camera: &FollowCamera) -> Self {
         let follow_camera = follow_camera.clone();
-        Self { follow_camera }
+        Self {
+            follow_camera,
+            state_started: get_time(),
+        }
     }
 
     fn draw_stopwatch(&self) {
         set_default_camera();
-        let time = (get_time() * 100.0) as usize;
-        let hundrets = time % 100;
-        let seconds = (time / 100) % 60;
-        let minutes = time / 6000;
-        let stopwatch = format!("{minutes:02}:{seconds:02}:{hundrets:02}");
+        let stopwatch = format_time(self.current_time());
         draw_text(&stopwatch, 5.0, 24.0, 32.0, WHITE);
+    }
+
+    fn current_time(&self) -> f64 {
+        get_time() - self.state_started
     }
 }
 
@@ -32,17 +37,18 @@ impl State for Game {
         world.car.update(&wheels_on_track);
 
         if world.track.finish(world.car.bbox()) {
-            Some(Box::new(Finish::new(&self.follow_camera)))
+            Some(Box::new(Finish::new(
+                &self.follow_camera,
+                self.current_time(),
+            )))
         } else {
             None
         }
     }
 
     fn draw(&mut self, world: &World) {
-        clear_background(DARKGREEN);
-        self.follow_camera.update(&world.car);
-        world.track.draw(&world.car);
-        world.car.draw();
+        world.draw(&mut self.follow_camera);
+
         self.draw_stopwatch();
     }
 }

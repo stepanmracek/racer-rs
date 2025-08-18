@@ -26,10 +26,7 @@ impl State for Init {
     }
 
     fn draw(&mut self, world: &World) {
-        clear_background(DARKGREEN);
-        self.follow_camera.update(&world.car);
-        world.track.draw(&world.car);
-        world.car.draw();
+        world.draw(&mut self.follow_camera);
 
         set_default_camera();
         draw_text("Press space to start", 5.0, 24.0, 32.0, WHITE);

@@ -1,4 +1,5 @@
-use crate::{car::Car, track::Track};
+use crate::{car::Car, follow_camera::FollowCamera, track::Track};
+use macroquad::prelude::*;
 
 pub struct World {
     pub track: Track,
@@ -15,5 +16,12 @@ impl World {
         track.add_finish();
         track.compute_rtree();
         Self { car, track }
+    }
+
+    pub fn draw(&self, follow_camera: &mut FollowCamera) {
+        clear_background(DARKGREEN);
+        follow_camera.update(&self.car);
+        self.track.draw(&self.car);
+        self.car.draw();
     }
 }
