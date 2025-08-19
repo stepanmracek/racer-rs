@@ -5,7 +5,7 @@ pub struct KeyboardController {}
 
 impl Controller for KeyboardController {
     fn control(
-        &self,
+        &mut self,
         _velocity: f32,
         _steering_angle: f32,
         _wheels_on_track: &[bool; 4],

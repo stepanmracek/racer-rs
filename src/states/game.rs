@@ -1,5 +1,5 @@
 use crate::{
-    controller::{Controller, KeyboardController},
+    controller::{Controller, KeyboardController, OnnxController},
     follow_camera::FollowCamera,
     states::{State, finish::Finish},
     track::sensor_readings,
@@ -16,6 +16,7 @@ pub struct Game {
     sensor_rays: Vec<(Vec2, Vec2)>,
     readings: Vec<Option<f32>>,
     controller: Box<dyn Controller>,
+    onnx_controller: Box<dyn Controller>,
 }
 
 impl Game {
@@ -27,6 +28,7 @@ impl Game {
             sensor_rays: vec![],
             readings: vec![],
             controller: Box::new(KeyboardController {}),
+            onnx_controller: Box::new(OnnxController::new("research/model.onnx")),
         }
     }
 
@@ -67,6 +69,13 @@ impl State for Game {
         /*let mut vec = vec![*world.car.velocity(), *world.car.steering_angle()];
         vec.extend(wheels_on_track.iter().map(|&w| if w { 1.0 } else { 0.0 }));
         vec.extend(self.readings.iter().map(|r| r.unwrap_or(SENSOR_REACH)));*/
+
+        self.onnx_controller.control(
+            *world.car.velocity(),
+            *world.car.steering_angle(),
+            &wheels_on_track,
+            &self.readings,
+        );
 
         let control = self.controller.control(
             *world.car.velocity(),
