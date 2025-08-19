@@ -137,4 +137,18 @@ impl Car {
     pub fn bbox(&self) -> &RotRect {
         &self.bbox
     }
+
+    pub fn sensor_rays(&self, sensor_len: f32) -> Vec<(Vec2, Vec2)> {
+        let start_offset = 10.0;
+        let start = self.position + Vec2::from_angle(self.rotation) * start_offset;
+        (-60..=60)
+            .step_by(10)
+            .map(|delta| {
+                let angle = Vec2::from_angle(self.rotation + (delta as f32).to_radians());
+                let start = start + angle.rotate(vec2(5.0, 0.0));
+                let end = start + angle.rotate(vec2(5.0 + sensor_len, 0.0));
+                (start, end)
+            })
+            .collect()
+    }
 }

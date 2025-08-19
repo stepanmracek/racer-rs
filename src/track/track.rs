@@ -2,6 +2,8 @@ use super::segment::*;
 use super::shape::*;
 use crate::car::Car;
 use crate::physics::RotRect;
+use crate::physics::arc_vs_segment;
+use crate::physics::segment_vs_segment;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
@@ -53,6 +55,16 @@ impl Track {
             }
         }
         false
+    }
+
+    pub fn nearest_segments(&self, pos: &Vec2, limit: usize) -> Vec<Rc<Segment>> {
+        self.rtree
+            .as_ref()
+            .unwrap()
+            .nearest_neighbor_iter(&[pos.x, pos.y])
+            .take(limit)
+            .map(|g| Rc::clone(&g.data))
+            .collect()
     }
 
     pub fn finish(&self, car_bbox: &RotRect) -> bool {
@@ -142,4 +154,56 @@ impl Track {
             .collect();
         self.rtree = Some(rstar::RTree::<TreeNode>::bulk_load(elements));
     }
+}
+
+pub fn sensor_readings(
+    nearest_segments: &Vec<Rc<Segment>>,
+    sensor_rays: &Vec<(Vec2, Vec2)>,
+) -> Vec<Option<f32>> {
+    let mut ans = vec![];
+    for (start, end) in sensor_rays {
+        let mut nearest: Option<f32> = None;
+        const WIDTH_HALF: f32 = TRACK_WIDTH / 2.0;
+
+        for segment in nearest_segments {
+            match &segment.shape {
+                Shape::Turn(turn) => {
+                    let center = turn.center(&segment.start);
+                    for d in [-WIDTH_HALF, WIDTH_HALF] {
+                        let intersection = arc_vs_segment(
+                            &center,
+                            turn.radius + d,
+                            &(segment.start.pos, segment.end.pos),
+                            &(*start, *end),
+                        );
+                        if let Some(intersection) = intersection {
+                            let dist = start.distance_squared(intersection);
+                            if nearest.is_none_or(|cur_dist| dist < cur_dist) {
+                                nearest = Some(dist);
+                            }
+                        }
+                    }
+                }
+                Shape::Straight(_) => {
+                    for d in [-WIDTH_HALF, WIDTH_HALF] {
+                        let shift = segment.start.dir.perp() * d;
+                        let intersection = segment_vs_segment(
+                            &(*start, *end),
+                            &(segment.start.pos + shift, segment.end.pos + shift),
+                        );
+                        if let Some(intersection) = intersection {
+                            let dist = start.distance_squared(intersection);
+                            if nearest.is_none_or(|cur_dist| dist < cur_dist) {
+                                nearest = Some(dist);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        ans.push(nearest.map(|dist| dist.sqrt()));
+    }
+
+    ans
 }

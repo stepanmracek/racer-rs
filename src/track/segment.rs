@@ -1,8 +1,8 @@
-use std::f32::consts::FRAC_PI_2;
-
 use super::constant::*;
 use super::shape::*;
+use crate::physics::point_in_angle;
 use macroquad::prelude::*;
+use std::f32::consts::FRAC_PI_2;
 
 pub struct Segment {
     pub start: Waypoint,
@@ -133,17 +133,7 @@ impl Segment {
                     return false;
                 }
 
-                let to_start = self.start.pos - center;
-                let to_end = self.end.pos - center;
-
-                let ab = to_start.perp_dot(to_end);
-                let av = to_start.perp_dot(to_pos);
-                let bv = to_end.perp_dot(to_pos);
-                if ab >= 0.0 {
-                    av >= 0.0 && bv <= 0.0 // CCW
-                } else {
-                    av <= 0.0 && bv >= 0.0 // CW
-                }
+                point_in_angle(pos, &center, &self.start.pos, &self.end.pos)
             }
         }
     }
