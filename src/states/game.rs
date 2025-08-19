@@ -1,4 +1,5 @@
 use crate::{
+    controller::{Controller, KeyboardController},
     follow_camera::FollowCamera,
     states::{State, finish::Finish},
     track::sensor_readings,
@@ -7,11 +8,14 @@ use crate::{
 };
 use macroquad::prelude::*;
 
+const SENSOR_REACH: f32 = 200.0;
+
 pub struct Game {
     follow_camera: FollowCamera,
     state_started: f64,
     sensor_rays: Vec<(Vec2, Vec2)>,
     readings: Vec<Option<f32>>,
+    controller: Box<dyn Controller>,
 }
 
 impl Game {
@@ -22,6 +26,7 @@ impl Game {
             state_started: get_time(),
             sensor_rays: vec![],
             readings: vec![],
+            controller: Box::new(KeyboardController {}),
         }
     }
 
@@ -46,10 +51,10 @@ impl Game {
     }
 
     fn update_readings(&mut self, world: &World) {
-        let sensor_len = 200.0;
-        let x = *world.car.position() + Vec2::from_angle(*world.car.rotation()) * sensor_len * 0.5;
+        let x =
+            *world.car.position() + Vec2::from_angle(*world.car.rotation()) * SENSOR_REACH * 0.5;
         let nearest_segments = world.track.nearest_segments(&x, 5);
-        self.sensor_rays = world.car.sensor_rays(sensor_len);
+        self.sensor_rays = world.car.sensor_rays(SENSOR_REACH);
         self.readings = sensor_readings(&nearest_segments, &self.sensor_rays);
     }
 }
@@ -58,7 +63,29 @@ impl State for Game {
     fn step(&mut self, world: &mut World) -> Option<Box<dyn State>> {
         self.update_readings(world);
         let wheels_on_track = world.car.wheels_on_track(&world.track);
-        world.car.update(&wheels_on_track);
+
+        /*let mut vec = vec![*world.car.velocity(), *world.car.steering_angle()];
+        vec.extend(wheels_on_track.iter().map(|&w| if w { 1.0 } else { 0.0 }));
+        vec.extend(self.readings.iter().map(|r| r.unwrap_or(SENSOR_REACH)));*/
+
+        let control = self.controller.control(
+            *world.car.velocity(),
+            *world.car.steering_angle(),
+            &wheels_on_track,
+            &self.readings,
+        );
+        world
+            .car
+            .update(&wheels_on_track, control.steer, control.throttle);
+
+        /*vec.push(control.steer);
+        vec.push(control.throttle);
+        let s = vec
+            .iter()
+            .map(|i| format!("{i:.5}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        println!("{s}");*/
 
         if world.track.finish(world.car.bbox()) {
             Some(Box::new(Finish::new(

@@ -1,6 +1,7 @@
 use macroquad::prelude::*;
 
 mod car;
+mod controller;
 mod follow_camera;
 mod physics;
 mod states;

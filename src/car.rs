@@ -40,37 +40,25 @@ impl Car {
         }
     }
 
-    pub fn update(&mut self, wheels_on_track: &[bool; 4]) {
+    pub fn update(&mut self, wheels_on_track: &[bool; 4], steer: f32, throttle: f32) {
         let dt = get_frame_time();
-        let (left, right) = (is_key_down(KeyCode::Left), is_key_down(KeyCode::Right));
-        let (up, down) = (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down));
-
         let turn_speed = FRAC_PI_6;
-        if left {
-            self.steering_angle += turn_speed * dt;
-        }
-        if right {
-            self.steering_angle -= turn_speed * dt;
-        }
-        if !left && !right {
+
+        self.steering_angle += steer * turn_speed * dt;
+        if steer == 0.0 {
             self.steering_angle = self.steering_angle.lerp(0.0, (10.0 * dt).clamp(0.0, 1.0));
         }
         self.steering_angle = self.steering_angle.clamp(-FRAC_PI_6, FRAC_PI_6);
 
         let acceleration = 50.0;
+        self.velocity += throttle * acceleration * dt;
+
         let penalty = wheels_on_track
             .iter()
             .filter(|&&on_track| !on_track)
             .map(|_| 0.99)
             .product::<f32>();
         let friction = 0.995 * penalty;
-
-        if up {
-            self.velocity += acceleration * dt;
-        }
-        if down {
-            self.velocity -= acceleration * dt;
-        }
         self.velocity *= friction;
 
         let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
@@ -153,10 +141,18 @@ impl Car {
     }
 
     pub fn position(&self) -> &Vec2 {
-        return &self.position;
+        &self.position
     }
 
     pub fn rotation(&self) -> &f32 {
-        return &self.rotation;
+        &self.rotation
+    }
+
+    pub fn velocity(&self) -> &f32 {
+        &self.velocity
+    }
+
+    pub fn steering_angle(&self) -> &f32 {
+        &self.steering_angle
     }
 }
