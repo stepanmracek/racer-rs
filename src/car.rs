@@ -5,8 +5,8 @@ use crate::{physics::RotRect, track::Track};
 
 pub struct Car {
     texture: Texture2D,
-    pub position: Vec2,
-    pub rotation: f32,
+    position: Vec2,
+    rotation: f32,
     velocity: f32,
     steering_angle: f32,
     wheels: [Vec2; 4],
@@ -150,5 +150,13 @@ impl Car {
                 (start, end)
             })
             .collect()
+    }
+
+    pub fn position(&self) -> &Vec2 {
+        return &self.position;
+    }
+
+    pub fn rotation(&self) -> &f32 {
+        return &self.rotation;
     }
 }

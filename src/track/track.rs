@@ -35,7 +35,8 @@ impl Track {
 
     pub fn draw(&self, car: &Car) {
         if let Some(rtree) = &self.rtree {
-            let view = Rect::new(car.position.x - 300.0, car.position.y - 200.0, 600.0, 400.0);
+            let pos = car.position();
+            let view = Rect::new(pos.x - 300.0, pos.y - 200.0, 600.0, 400.0);
             //draw_rectangle_lines(view.x, view.y, view.w, view.h, 3.0, WHITE);
             let envelope =
                 rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);

@@ -47,7 +47,7 @@ impl Game {
 
     fn update_readings(&mut self, world: &World) {
         let sensor_len = 200.0;
-        let x = world.car.position + Vec2::from_angle(world.car.rotation) * sensor_len * 0.5;
+        let x = *world.car.position() + Vec2::from_angle(*world.car.rotation()) * sensor_len * 0.5;
         let nearest_segments = world.track.nearest_segments(&x, 5);
         self.sensor_rays = world.car.sensor_rays(sensor_len);
         self.readings = sensor_readings(&nearest_segments, &self.sensor_rays);
