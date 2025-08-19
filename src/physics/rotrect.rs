@@ -3,7 +3,6 @@ use macroquad::prelude::*;
 #[derive(Debug)]
 pub struct RotRect {
     center: Vec2,
-    size: Vec2,
     half_size: Vec2,
     rotation: f32,
     corners: [Vec2; 4],
@@ -21,24 +20,11 @@ impl RotRect {
             .unwrap();
         Self {
             center,
-            size,
             half_size,
             rotation,
             corners,
             axes,
         }
-    }
-
-    pub fn center(&self) -> &Vec2 {
-        &self.center
-    }
-
-    pub fn size(&self) -> &Vec2 {
-        &self.size
-    }
-
-    pub fn rotation(&self) -> &f32 {
-        &self.rotation
     }
 
     pub fn update(&mut self, new_center: Vec2, new_rotation: f32) {
