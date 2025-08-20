@@ -4,7 +4,7 @@ use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
 use crate::{physics::RotRect, track::Track};
 
 pub struct Car {
-    texture: Texture2D,
+    texture: Option<Texture2D>,
     position: Vec2,
     rotation: f32,
     velocity: f32,
@@ -15,12 +15,12 @@ pub struct Car {
 }
 
 impl Car {
-    pub async fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: f32, y: f32) -> Self {
         let wheel_base = 14.0;
         let position = vec2(x, y);
         let rotation = FRAC_PI_2;
         Self {
-            texture: load_texture("assets/car.png").await.unwrap(),
+            texture: None,
             position,
             rotation,
             velocity: 0.0,
@@ -38,6 +38,10 @@ impl Car {
                 0.0,
             ),
         }
+    }
+
+    pub async fn load_texture(&mut self) {
+        self.texture = Some(load_texture("assets/car.png").await.unwrap());
     }
 
     pub fn reset(&mut self, position: &Vec2, rotation: f32, velocity: f32) {
@@ -102,20 +106,22 @@ impl Car {
             );
         }
 
-        let texture_pos = (self.position + rot_vec * self.wheel_base / 2.0)
-            - vec2(self.texture.width() / 40.0, self.texture.height() / 40.0);
-        draw_texture_ex(
-            &self.texture,
-            texture_pos.x,
-            texture_pos.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(self.texture.size() / 20.0),
-                flip_y: true,
-                rotation: draw_rot,
-                ..Default::default()
-            },
-        );
+        if let Some(texture) = &self.texture {
+            let texture_pos = (self.position + rot_vec * self.wheel_base / 2.0)
+                - vec2(texture.width() / 40.0, texture.height() / 40.0);
+            draw_texture_ex(
+                texture,
+                texture_pos.x,
+                texture_pos.y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(texture.size() / 20.0),
+                    flip_y: true,
+                    rotation: draw_rot,
+                    ..Default::default()
+                },
+            );
+        }
     }
 
     pub fn wheels_on_track(&self, track: &Track) -> [bool; 4] {

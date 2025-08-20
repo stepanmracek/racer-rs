@@ -680,6 +680,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "racer_headless"
+version = "0.1.0"
+dependencies = [
+ "racer_logic",
+]
+
+[[package]]
 name = "racer_logic"
 version = "0.1.0"
 dependencies = [

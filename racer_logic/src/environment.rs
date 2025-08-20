@@ -39,8 +39,8 @@ pub struct Outcome {
 }
 
 impl Environment {
-    pub async fn new() -> Self {
-        let car = Car::new(0.0, 15.0).await;
+    pub fn new() -> Self {
+        let car = Car::new(0.0, 15.0);
         let mut track = Track::new();
         for _ in 0..100 {
             track.add_random_shape();
@@ -90,5 +90,11 @@ impl Environment {
         follow_camera.update(&self.car);
         self.track.draw(&self.car);
         self.car.draw();
+    }
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
     }
 }

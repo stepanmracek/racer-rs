@@ -1,5 +1,5 @@
 mod car;
-mod controller;
+pub mod controller;
 pub mod environment;
 mod follow_camera;
 mod physics;

@@ -6,7 +6,8 @@ use racer_logic::{
 
 #[macroquad::main("racer")]
 async fn main() {
-    let mut environment = Environment::new().await;
+    let mut environment = Environment::new();
+    environment.car.load_texture().await;
     let mut state: Box<dyn State> = Box::new(Init::new(&environment));
 
     loop {
