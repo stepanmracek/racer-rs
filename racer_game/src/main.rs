@@ -1,18 +1,13 @@
 use macroquad::prelude::*;
-
-mod car;
-mod controller;
-mod environment;
-mod follow_camera;
-mod physics;
-mod states;
-mod track;
-mod utils;
+use racer_logic::{
+    environment::Environment,
+    states::{Init, State},
+};
 
 #[macroquad::main("racer")]
 async fn main() {
-    let mut environment = environment::Environment::new().await;
-    let mut state: Box<dyn states::State> = Box::new(states::Init::new(&environment));
+    let mut environment = Environment::new().await;
+    let mut state: Box<dyn State> = Box::new(Init::new(&environment));
 
     loop {
         if let Some(next_state) = state.step(&mut environment) {

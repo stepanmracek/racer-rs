@@ -157,6 +157,12 @@ impl Track {
     }
 }
 
+impl Default for Track {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn sensor_readings(
     nearest_segments: &Vec<Rc<Segment>>,
     sensor_rays: &Vec<(Vec2, Vec2)>,
