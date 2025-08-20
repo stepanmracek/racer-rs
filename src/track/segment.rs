@@ -8,6 +8,7 @@ pub struct Segment {
     pub start: Waypoint,
     pub shape: Shape,
     pub end: Waypoint,
+    pub distance_to_last: f32,
 }
 
 impl Segment {
@@ -31,7 +32,12 @@ impl Segment {
                 }
             }
         };
-        Self { start, shape, end }
+        Self {
+            start,
+            shape,
+            end,
+            distance_to_last: 0.0,
+        }
     }
 
     pub fn draw(&self) {

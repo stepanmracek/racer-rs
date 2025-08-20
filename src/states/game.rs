@@ -70,15 +70,15 @@ impl State for Game {
         vec.extend(wheels_on_track.iter().map(|&w| if w { 1.0 } else { 0.0 }));
         vec.extend(self.readings.iter().map(|r| r.unwrap_or(SENSOR_REACH)));*/
 
-        let onnx_control = self.onnx_controller.control(
+        let control = self.onnx_controller.control(
             *world.car.velocity(),
             *world.car.steering_angle(),
             &wheels_on_track,
             &self.readings,
         );
-        println!("{onnx_control:?}");
+        //println!("{control:?}");
 
-        self.controller.control(
+        let control = self.controller.control(
             *world.car.velocity(),
             *world.car.steering_angle(),
             &wheels_on_track,
@@ -86,10 +86,11 @@ impl State for Game {
         );
         world
             .car
-            .update(&wheels_on_track, onnx_control.steer, onnx_control.throttle);
+            .update(&wheels_on_track, control.steer, control.throttle);
 
         if is_key_pressed(KeyCode::Space) {
             let nearest_segment = &world.track.nearest_segments(world.car.position(), 1)[0];
+            let nearest_segment = nearest_segment.borrow();
             world.car.reset(
                 &nearest_segment.start.pos,
                 nearest_segment.start.dir.to_angle(),
@@ -119,6 +120,17 @@ impl State for Game {
     fn draw(&mut self, world: &World) {
         world.draw(&mut self.follow_camera);
         self.draw_readings();
+
+        let car = *world.car.position() + Vec2::from_angle(*world.car.rotation()) * 20.0;
+        let nearest = world.track.nearest_segments(&car, 1);
+        let nearest_segment = nearest[0].borrow();
+        let nearest_pos = nearest_segment.end.pos;
+        draw_line(car.x, car.y, nearest_pos.x, nearest_pos.y, 2.0, GRAY);
+        println!(
+            "{:.1}",
+            car.distance(nearest_pos) + nearest_segment.distance_to_last
+        );
+
         self.draw_stopwatch();
     }
 }

@@ -7,14 +7,15 @@ use crate::physics::segment_vs_segment;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
+use std::cell::RefCell;
 use std::f32::consts::FRAC_PI_2;
 use std::rc::Rc;
 
 type TreeNode =
-    rstar::primitives::GeomWithData<rstar::primitives::Rectangle<[f32; 2]>, Rc<Segment>>;
+    rstar::primitives::GeomWithData<rstar::primitives::Rectangle<[f32; 2]>, Rc<RefCell<Segment>>>;
 
 pub struct Track {
-    segments: Vec<Rc<Segment>>,
+    segments: Vec<Rc<RefCell<Segment>>>,
     rtree: Option<rstar::RTree<TreeNode>>,
     finish: Option<RotRect>,
 }
@@ -42,7 +43,7 @@ impl Track {
                 rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
             rtree
                 .locate_in_envelope_intersecting(&envelope)
-                .for_each(|segment| segment.data.draw());
+                .for_each(|segment| segment.data.borrow().draw());
         }
     }
 
@@ -50,7 +51,7 @@ impl Track {
         let rtree = &self.rtree.as_ref().unwrap();
 
         for segment in rtree.nearest_neighbor_iter(&[pos.x, pos.y]).take(2) {
-            if segment.data.hits(pos) {
+            if segment.data.borrow().hits(pos) {
                 // draw_circle(pos.x, pos.y, 5.0, YELLOW);
                 return true;
             }
@@ -58,7 +59,7 @@ impl Track {
         false
     }
 
-    pub fn nearest_segments(&self, pos: &Vec2, limit: usize) -> Vec<Rc<Segment>> {
+    pub fn nearest_segments(&self, pos: &Vec2, limit: usize) -> Vec<Rc<RefCell<Segment>>> {
         self.rtree
             .as_ref()
             .unwrap()
@@ -79,13 +80,18 @@ impl Track {
     fn last_end(&self) -> Waypoint {
         self.segments
             .last()
-            .map(|last| last.end.clone())
+            .map(|last| last.borrow().end.clone())
             .unwrap_or_default()
     }
 
     fn add_shape(&mut self, shape: Shape) {
-        self.segments
-            .push(Rc::new(Segment::new(self.last_end(), shape)));
+        let segment = Segment::new(self.last_end(), shape);
+        let len = segment.start.pos.distance(segment.end.pos);
+        self.segments.iter_mut().for_each(|s| {
+            let mut s = s.borrow_mut();
+            s.distance_to_last += len;
+        });
+        self.segments.push(Rc::new(RefCell::new(segment)));
     }
 
     pub fn add_random_shape(&mut self) {
@@ -140,7 +146,7 @@ impl Track {
             is_finish: true,
         }));
 
-        let last = self.segments.last().unwrap();
+        let last = self.segments.last().unwrap().borrow();
         let center = last.start.pos.midpoint(last.end.pos);
         let size = vec2(20.0, TRACK_WIDTH);
         let rotation = (last.end.pos - last.start.pos).to_angle();
@@ -151,14 +157,14 @@ impl Track {
         let elements: Vec<_> = self
             .segments
             .iter()
-            .map(|segment| TreeNode::new(segment.bbox().into(), Rc::clone(segment)))
+            .map(|segment| TreeNode::new(segment.borrow().bbox().into(), Rc::clone(segment)))
             .collect();
         self.rtree = Some(rstar::RTree::<TreeNode>::bulk_load(elements));
     }
 }
 
 pub fn sensor_readings(
-    nearest_segments: &Vec<Rc<Segment>>,
+    nearest_segments: &Vec<Rc<RefCell<Segment>>>,
     sensor_rays: &Vec<(Vec2, Vec2)>,
 ) -> Vec<Option<f32>> {
     let mut ans = vec![];
@@ -167,6 +173,7 @@ pub fn sensor_readings(
         const WIDTH_HALF: f32 = TRACK_WIDTH / 2.0;
 
         for segment in nearest_segments {
+            let segment = &segment.borrow();
             match &segment.shape {
                 Shape::Turn(turn) => {
                     let center = turn.center(&segment.start);
