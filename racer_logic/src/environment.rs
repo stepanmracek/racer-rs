@@ -72,11 +72,12 @@ impl Environment {
         }
     }
 
-    pub fn step(&mut self, action: &Action) -> Outcome {
+    pub fn step(&mut self, action: &Action, fixed_time: bool) -> Outcome {
         self.car.update(
             &self.observation.wheels_on_track,
             action.steer,
             action.throttle,
+            fixed_time,
         );
         self.observation = Environment::observe(&self.car, &self.track);
 

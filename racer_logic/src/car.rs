@@ -51,8 +51,18 @@ impl Car {
         self.steering_angle = 0.0
     }
 
-    pub fn update(&mut self, wheels_on_track: &[bool; 4], steer: f32, throttle: f32) {
-        let dt = get_frame_time();
+    pub fn update(
+        &mut self,
+        wheels_on_track: &[bool; 4],
+        steer: f32,
+        throttle: f32,
+        fixed_time: bool,
+    ) {
+        let dt = if fixed_time {
+            1.0 / 60.0
+        } else {
+            get_frame_time()
+        };
         let turn_speed = FRAC_PI_6;
 
         self.steering_angle += steer * turn_speed * dt;

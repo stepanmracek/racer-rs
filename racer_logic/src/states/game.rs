@@ -51,7 +51,7 @@ impl State for Game {
         //let _action = self.onnx_controller.control(&environment.observation);
         let action = self.controller.control(&environment.observation);
 
-        let outcome = environment.step(&action);
+        let outcome = environment.step(&action, false);
 
         /*if is_key_pressed(KeyCode::Space) {
             let nearest_segment = &environment

@@ -1,3 +1,4 @@
+use kdam::tqdm;
 use racer_logic::{
     controller::{Controller, OnnxController},
     environment::Environment,
@@ -7,10 +8,9 @@ fn main() {
     let mut env = Environment::new();
     let mut controller = OnnxController::new("research/model.onnx");
 
-    loop {
+    for _ in tqdm!(0..1_000_000) {
         let action = controller.control(&env.observation);
-        println!("{:?} -> {:?}", env.observation, action);
-        let output = env.step(&action);
+        let output = env.step(&action, true);
         if output.finished {
             break;
         }
