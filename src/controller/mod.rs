@@ -4,6 +4,7 @@ mod onnx;
 pub use keyboard::KeyboardController;
 pub use onnx::OnnxController;
 
+#[derive(Debug)]
 pub struct Control {
     pub steer: f32,
     pub throttle: f32,

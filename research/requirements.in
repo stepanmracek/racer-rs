@@ -1,0 +1,9 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+jupyterlab
+matplotlib
+onnx
+onnxruntime
+pandas
+scikit-learn
+torch==2.8.0+cpu
+uv

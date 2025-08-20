@@ -25,8 +25,7 @@ impl Controller for OnnxController {
     ) -> super::Control {
         let mut vec = vec![velocity, steering_angle];
         vec.extend(wheels_on_track.iter().map(|&w| if w { 1.0 } else { 0.0 }));
-        vec.extend(sensor_readings.iter().map(|r| r.unwrap_or(200.0))); // TODO: use SENSOR_REACH here
-        // TODO: scale input vec values!!!
+        vec.extend(sensor_readings.iter().map(|r| r.unwrap_or(205.0))); // TODO: use SENSOR_REACH here
 
         let input_vec = ort::value::Tensor::from_array(([1, vec.len()], vec)).unwrap();
         let input = ort::inputs!["input" => input_vec];

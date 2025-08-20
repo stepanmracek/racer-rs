@@ -40,6 +40,13 @@ impl Car {
         }
     }
 
+    pub fn reset(&mut self, position: &Vec2, rotation: f32, velocity: f32) {
+        self.position = *position;
+        self.rotation = rotation;
+        self.velocity = velocity;
+        self.steering_angle = 0.0
+    }
+
     pub fn update(&mut self, wheels_on_track: &[bool; 4], steer: f32, throttle: f32) {
         let dt = get_frame_time();
         let turn_speed = FRAC_PI_6;
