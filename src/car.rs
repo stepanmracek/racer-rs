@@ -141,7 +141,7 @@ impl Car {
             .map(|delta| {
                 let angle = Vec2::from_angle(self.rotation + (delta as f32).to_radians());
                 let start = start + angle.rotate(vec2(5.0, 0.0));
-                let end = start + angle.rotate(vec2(5.0 + sensor_len, 0.0));
+                let end = start + angle.rotate(vec2(sensor_len, 0.0));
                 (start, end)
             })
             .collect()

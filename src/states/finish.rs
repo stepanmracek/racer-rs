@@ -1,4 +1,6 @@
-use crate::{follow_camera::FollowCamera, states::State, utils::format_time, world::World};
+use crate::{
+    environment::Environment, follow_camera::FollowCamera, states::State, utils::format_time,
+};
 use macroquad::prelude::*;
 
 pub struct Finish {
@@ -17,12 +19,12 @@ impl Finish {
 }
 
 impl State for Finish {
-    fn step(&mut self, _world: &mut World) -> Option<Box<dyn State>> {
+    fn step(&mut self, _environment: &mut Environment) -> Option<Box<dyn State>> {
         None
     }
 
-    fn draw(&mut self, world: &World) {
-        world.draw(&mut self.follow_camera);
+    fn draw(&mut self, environment: &Environment) {
+        environment.draw(&mut self.follow_camera);
 
         set_default_camera();
         let time = format_time(self.result_time);

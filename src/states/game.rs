@@ -1,22 +1,17 @@
 use crate::{
-    controller::{Controller, KeyboardController, OnnxController},
+    controller::{Controller, KeyboardController},
+    environment::{Environment, SensorReadings},
     follow_camera::FollowCamera,
     states::{State, finish::Finish},
-    track::sensor_readings,
     utils::format_time,
-    world::World,
 };
 use macroquad::prelude::*;
-
-const SENSOR_REACH: f32 = 200.0;
 
 pub struct Game {
     follow_camera: FollowCamera,
     state_started: f64,
-    sensor_rays: Vec<(Vec2, Vec2)>,
-    readings: Vec<Option<f32>>,
     controller: Box<dyn Controller>,
-    onnx_controller: Box<dyn Controller>,
+    // onnx_controller: Box<dyn Controller>,
 }
 
 impl Game {
@@ -25,10 +20,8 @@ impl Game {
         Self {
             follow_camera,
             state_started: get_time(),
-            sensor_rays: vec![],
-            readings: vec![],
             controller: Box::new(KeyboardController {}),
-            onnx_controller: Box::new(OnnxController::new("research/model.onnx")),
+            // onnx_controller: Box::new(OnnxController::new("research/model.onnx")),
         }
     }
 
@@ -42,8 +35,8 @@ impl Game {
         get_time() - self.state_started
     }
 
-    fn draw_readings(&self) {
-        for (d, (start, end)) in self.readings.iter().zip(self.sensor_rays.iter()) {
+    fn draw_sensors(sensors: &SensorReadings) {
+        for (d, (start, end)) in sensors.distances.iter().zip(sensors.rays.iter()) {
             draw_line(start.x, start.y, end.x, end.y, 0.3, GREEN.with_alpha(0.2));
             if let Some(d) = d {
                 let p = (*end - *start).normalize() * *d + *start;
@@ -51,62 +44,27 @@ impl Game {
             }
         }
     }
-
-    fn update_readings(&mut self, world: &World) {
-        let x =
-            *world.car.position() + Vec2::from_angle(*world.car.rotation()) * SENSOR_REACH * 0.5;
-        let nearest_segments = world.track.nearest_segments(&x, 5);
-        self.sensor_rays = world.car.sensor_rays(SENSOR_REACH);
-        self.readings = sensor_readings(&nearest_segments, &self.sensor_rays);
-    }
 }
 
 impl State for Game {
-    fn step(&mut self, world: &mut World) -> Option<Box<dyn State>> {
-        self.update_readings(world);
-        let wheels_on_track = world.car.wheels_on_track(&world.track);
+    fn step(&mut self, environment: &mut Environment) -> Option<Box<dyn State>> {
+        //let _action = self.onnx_controller.control(&environment.observation);
+        let action = self.controller.control(&environment.observation);
 
-        /*let mut vec = vec![*world.car.velocity(), *world.car.steering_angle()];
-        vec.extend(wheels_on_track.iter().map(|&w| if w { 1.0 } else { 0.0 }));
-        vec.extend(self.readings.iter().map(|r| r.unwrap_or(SENSOR_REACH)));*/
+        let outcome = environment.step(&action);
 
-        let onnx_control = self.onnx_controller.control(
-            *world.car.velocity(),
-            *world.car.steering_angle(),
-            &wheels_on_track,
-            &self.readings,
-        );
-        println!("{onnx_control:?}");
-
-        self.controller.control(
-            *world.car.velocity(),
-            *world.car.steering_angle(),
-            &wheels_on_track,
-            &self.readings,
-        );
-        world
-            .car
-            .update(&wheels_on_track, onnx_control.steer, onnx_control.throttle);
-
-        if is_key_pressed(KeyCode::Space) {
-            let nearest_segment = &world.track.nearest_segments(world.car.position(), 1)[0];
-            world.car.reset(
+        /*if is_key_pressed(KeyCode::Space) {
+            let nearest_segment = &environment
+                .track
+                .nearest_segments(environment.car.position(), 1)[0];
+            environment.car.reset(
                 &nearest_segment.start.pos,
                 nearest_segment.start.dir.to_angle(),
                 0.0,
             );
-        }
+        }*/
 
-        /*vec.push(control.steer);
-        vec.push(control.throttle);
-        let s = vec
-            .iter()
-            .map(|i| format!("{i:.5}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        println!("{s}");*/
-
-        if world.track.finish(world.car.bbox()) {
+        if outcome.finished {
             Some(Box::new(Finish::new(
                 &self.follow_camera,
                 self.current_time(),
@@ -116,9 +74,9 @@ impl State for Game {
         }
     }
 
-    fn draw(&mut self, world: &World) {
-        world.draw(&mut self.follow_camera);
-        self.draw_readings();
+    fn draw(&mut self, environment: &Environment) {
+        environment.draw(&mut self.follow_camera);
+        Game::draw_sensors(&environment.observation.sensors);
         self.draw_stopwatch();
     }
 }

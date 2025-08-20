@@ -2,24 +2,24 @@ use macroquad::prelude::*;
 
 mod car;
 mod controller;
+mod environment;
 mod follow_camera;
 mod physics;
 mod states;
 mod track;
 mod utils;
-mod world;
 
 #[macroquad::main("racer")]
 async fn main() {
-    let mut world = world::World::new().await;
-    let mut state: Box<dyn states::State> = Box::new(states::Init::new(&world));
+    let mut environment = environment::Environment::new().await;
+    let mut state: Box<dyn states::State> = Box::new(states::Init::new(&environment));
 
     loop {
-        if let Some(next_state) = state.step(&mut world) {
+        if let Some(next_state) = state.step(&mut environment) {
             state = next_state;
         }
 
-        state.draw(&world);
+        state.draw(&environment);
 
         next_frame().await;
     }
