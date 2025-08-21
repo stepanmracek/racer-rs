@@ -101,10 +101,13 @@ impl Environment {
         let d = car_pos.distance(finish_pos);
         draw_line(car_pos.x, car_pos.y, finish_pos.x, finish_pos.y, 1.0, GRAY);
 
+        let to_finish = finish_pos - car_pos;
+        let angle = Vec2::from_angle(*self.car.rotation()).angle_between(to_finish);
+
         push_camera_state();
         set_default_camera();
         draw_text(
-            &format!("{d:.1}"),
+            &format!("{d:.1} {angle:.1}"),
             screen_width() / 2.0,
             screen_height() / 2.0,
             16.0,
