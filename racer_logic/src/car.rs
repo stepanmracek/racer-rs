@@ -150,7 +150,7 @@ impl Car {
     }
 
     pub fn sensor_rays(&self, sensor_len: f32) -> Vec<(Vec2, Vec2)> {
-        let start = self.position_with_offset(10.0);
+        let start = self.windshield_position();
         (-60..=60)
             .step_by(10)
             .map(|delta| {
@@ -168,6 +168,10 @@ impl Car {
 
     pub fn position_with_offset(&self, offset: f32) -> Vec2 {
         self.position + Vec2::from_angle(self.rotation) * offset
+    }
+
+    pub fn windshield_position(&self) -> Vec2 {
+        self.position_with_offset(10.0)
     }
 
     pub fn rotation(&self) -> &f32 {

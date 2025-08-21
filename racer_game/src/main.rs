@@ -3,10 +3,24 @@ use racer_logic::{
     environment::Environment,
     states::{Init, State},
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
-#[macroquad::main("racer")]
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "racer".to_owned(),
+        fullscreen: true,
+        sample_count: 2,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
-    let mut environment = Environment::new();
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_micros() as u64;
+    let mut environment = Environment::new(seed);
     environment.car.load_texture().await;
     let mut state: Box<dyn State> = Box::new(Init::new(&environment));
 
