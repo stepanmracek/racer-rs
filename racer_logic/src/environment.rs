@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::{
     car::Car,
     follow_camera::FollowCamera,
@@ -65,8 +67,15 @@ impl From<Observation> for Vec<f32> {
 }
 
 impl Environment {
-    pub fn new(seed: u64) -> Self {
+    pub fn new(seed: Option<u64>) -> Self {
+        let seed = seed.unwrap_or_else(|| {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64
+        });
         macroquad::rand::srand(seed);
+
         let car = Car::new(0.0, 15.0);
         let mut track = Track::new();
         for _ in 0..2 {
@@ -131,6 +140,6 @@ impl Environment {
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(0)
+        Self::new(Some(0))
     }
 }
