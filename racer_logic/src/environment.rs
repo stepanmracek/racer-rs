@@ -56,7 +56,7 @@ impl Environment {
     }
 
     fn sensor_readings(car: &Car, track: &Track) -> SensorReadings {
-        let x = *car.position() + Vec2::from_angle(*car.rotation()) * SENSOR_REACH * 0.5;
+        let x = car.position_with_offset(SENSOR_REACH * 0.5);
         let nearest_segments = track.nearest_segments(&x, 5);
         let rays = car.sensor_rays(SENSOR_REACH);
         let distances = sensor_readings(&nearest_segments, &rays);
@@ -91,6 +91,26 @@ impl Environment {
         follow_camera.update(&self.car);
         self.track.draw(&self.car);
         self.car.draw();
+
+        let car_pos = self.car.position_with_offset(20.0);
+        let finish_pos = self
+            .track
+            .nearest_segments(&self.car.position_with_offset(50.0), 1)[0]
+            .end
+            .pos;
+        let d = car_pos.distance(finish_pos);
+        draw_line(car_pos.x, car_pos.y, finish_pos.x, finish_pos.y, 1.0, GRAY);
+
+        push_camera_state();
+        set_default_camera();
+        draw_text(
+            &format!("{d:.1}"),
+            screen_width() / 2.0,
+            screen_height() / 2.0,
+            16.0,
+            YELLOW,
+        );
+        pop_camera_state();
     }
 }
 

@@ -87,7 +87,7 @@ impl Car {
         self.position += pos_dot * dt;
         self.rotation += theta_dot * dt;
         self.bbox.update(
-            self.position + Vec2::from_angle(self.rotation) * self.wheel_base / 2.0,
+            self.position_with_offset(self.wheel_base / 2.0),
             self.rotation - FRAC_PI_2,
         );
     }
@@ -150,8 +150,7 @@ impl Car {
     }
 
     pub fn sensor_rays(&self, sensor_len: f32) -> Vec<(Vec2, Vec2)> {
-        let start_offset = 10.0;
-        let start = self.position + Vec2::from_angle(self.rotation) * start_offset;
+        let start = self.position_with_offset(10.0);
         (-60..=60)
             .step_by(10)
             .map(|delta| {
@@ -165,6 +164,10 @@ impl Car {
 
     pub fn position(&self) -> &Vec2 {
         &self.position
+    }
+
+    pub fn position_with_offset(&self, offset: f32) -> Vec2 {
+        self.position + Vec2::from_angle(self.rotation) * offset
     }
 
     pub fn rotation(&self) -> &f32 {

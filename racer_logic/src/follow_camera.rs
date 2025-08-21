@@ -21,11 +21,10 @@ impl FollowCamera {
 
     pub fn update(&mut self, car: &Car) {
         let car_rotation = car.rotation() - FRAC_PI_2;
-        let car_pos = *car.position();
-        let shift = Vec2::from_angle(car_rotation).rotate(vec2(0.0, 50.0));
+        let target = car.position_with_offset(50.0);
         let dt = get_frame_time();
         self.camera_2d.rotation = self.camera_2d.rotation.lerp(-car_rotation.to_degrees(), dt);
-        self.camera_2d.target = self.camera_2d.target.lerp(car_pos + shift, 5.0 * dt);
+        self.camera_2d.target = self.camera_2d.target.lerp(target, 5.0 * dt);
         self.camera_2d.zoom = vec2(self.zoom / screen_width(), -self.zoom / screen_height());
         set_camera(&self.camera_2d);
     }
