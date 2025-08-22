@@ -1,6 +1,6 @@
 use crate::{
     car::Car,
-    controller::{Controller, OnnxController},
+    controller::Controller,
     environment::{Environment, Observation},
     follow_camera::FollowCamera,
     states::{State, finish::Finish},
@@ -16,12 +16,15 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(follow_camera: &FollowCamera) -> Self {
+    pub fn new(
+        follow_camera: &FollowCamera,
+        controller_factory: fn() -> Box<dyn Controller>,
+    ) -> Self {
         let follow_camera = follow_camera.clone();
         Self {
             follow_camera,
             state_started: get_time(),
-            controller: Box::new(OnnxController::new("research/model.onnx")),
+            controller: controller_factory(),
         }
     }
 

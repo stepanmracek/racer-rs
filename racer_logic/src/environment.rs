@@ -45,6 +45,7 @@ pub struct Action {
 #[derive(Debug)]
 pub struct Outcome {
     pub finished: bool,
+    pub reward: f32,
 }
 
 impl From<Observation> for Vec<f32> {
@@ -78,7 +79,7 @@ impl Environment {
 
         let car = Car::new(0.0, 15.0);
         let mut track = Track::new();
-        for _ in 0..2 {
+        for _ in 0..5 {
             track.add_random_shape();
         }
         track.add_finish();
@@ -125,9 +126,17 @@ impl Environment {
         );
         self.observation = Environment::observe(&self.car, &self.track);
 
-        Outcome {
-            finished: self.track.finish(self.car.bbox()),
+        let finished = self.track.finish(self.car.bbox());
+        let mut reward = self
+            .observation
+            .wheels_on_track
+            .iter()
+            .map(|&b| if b { 0.0 } else { -0.25 })
+            .sum::<f32>();
+        if finished {
+            reward += 1000.0;
         }
+        Outcome { finished, reward }
     }
 
     pub fn draw(&self, follow_camera: &mut FollowCamera) {
