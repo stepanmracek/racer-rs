@@ -1,9 +1,8 @@
 [package]
-name = "racer_game"
+name = "racer_onnx_controller"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-macroquad = "0.4.14"
+ort = "2.0.0-rc.10"
 racer_logic = { path = "../racer_logic" }
-racer_onnx_controller = { path = "../racer_onnx_controller" }

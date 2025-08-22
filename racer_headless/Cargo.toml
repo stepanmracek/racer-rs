@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 kdam = "0.6.3"
 racer_logic = { path = "../racer_logic" }
+racer_onnx_controller = { path = "../racer_onnx_controller" }

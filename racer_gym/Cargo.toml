@@ -1,9 +1,12 @@
 [package]
-name = "racer_game"
+name = "racer_gym"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "racer_gym"
+crate-type = ["cdylib"]
+
 [dependencies]
-macroquad = "0.4.14"
+pyo3 = "0.25.0"
 racer_logic = { path = "../racer_logic" }
-racer_onnx_controller = { path = "../racer_onnx_controller" }

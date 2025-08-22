@@ -4,6 +4,7 @@ use crate::{
 };
 use macroquad::prelude::*;
 
+#[derive(Default)]
 pub struct KeyboardController {}
 
 impl Controller for KeyboardController {

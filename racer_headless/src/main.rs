@@ -1,8 +1,6 @@
 use kdam::tqdm;
-use racer_logic::{
-    controller::{Controller, OnnxController},
-    environment::Environment,
-};
+use racer_logic::{controller::Controller, environment::Environment};
+use racer_onnx_controller::OnnxController;
 
 fn main() {
     let mut controller = OnnxController::new("research/model.onnx");
@@ -22,13 +20,17 @@ fn main() {
                 break;
             }
         }
-        let last_reward = rewards[rewards.len() - 1];
-        let discounted_reward = rewards
-            .into_iter()
+        let mut discounted_reward: Vec<f32> = rewards
+            .iter()
             .rev()
-            .reduce(|acc, r| acc * gamma + r)
-            .unwrap_or_default();
-        println!("{discounted_reward} {}", last_reward);
+            .scan(0.0, |acc, r| {
+                *acc = *acc * gamma + r;
+                Some(*acc)
+            })
+            .collect();
+        discounted_reward.reverse();
+        assert_eq!(discounted_reward.len(), rewards.len());
+        println!("{discounted_reward:?}");
     }
     eprintln!("Finished episodes: {finish_count}");
 }

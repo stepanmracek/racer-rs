@@ -1,9 +1,10 @@
 use macroquad::prelude::*;
 use racer_logic::{
-    controller::controller_factory,
+    controller::{Controller, KeyboardController},
     environment::Environment,
     states::{Init, State},
 };
+use racer_onnx_controller::OnnxController;
 
 fn window_conf() -> Conf {
     Conf {
@@ -11,6 +12,14 @@ fn window_conf() -> Conf {
         //fullscreen: true,
         sample_count: 2,
         ..Default::default()
+    }
+}
+
+fn controller_factory() -> Box<dyn Controller> {
+    if let Some(path) = std::env::args().nth(1) {
+        Box::new(OnnxController::new(&path))
+    } else {
+        Box::new(KeyboardController::default())
     }
 }
 
