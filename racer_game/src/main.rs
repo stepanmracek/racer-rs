@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 use racer_logic::{
-    controller::OnnxController,
+    controller::controller_factory,
     environment::Environment,
     states::{Init, State},
 };
@@ -18,9 +18,7 @@ fn window_conf() -> Conf {
 async fn main() {
     let mut environment = Environment::new(None);
     environment.car.load_texture().await;
-    let mut state: Box<dyn State> = Box::new(Init::new(&environment, || {
-        Box::new(OnnxController::new("research/model.onnx"))
-    }));
+    let mut state: Box<dyn State> = Box::new(Init::new(&environment, controller_factory));
 
     loop {
         if let Some(next_state) = state.step(&mut environment) {
