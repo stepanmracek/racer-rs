@@ -6,4 +6,5 @@ onnxruntime
 pandas
 scikit-learn
 torch==2.8.0+cpu
+tqdm
 uv

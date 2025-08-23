@@ -1,4 +1,7 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    collections::HashSet,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use crate::{
     car::Car,
@@ -13,6 +16,7 @@ pub struct Environment {
     pub track: Track,
     pub car: Car,
     pub observation: Observation,
+    rewarded_waypoints: HashSet<(i32, i32)>,
 }
 
 #[derive(Debug, Clone)]
@@ -79,16 +83,18 @@ impl Environment {
 
         let car = Car::new(0.0, 15.0);
         let mut track = Track::new();
-        for _ in 0..5 {
+        for _ in 0..100 {
             track.add_random_shape();
         }
         track.add_finish();
         track.compute_rtree();
         let observation = Environment::observe(&car, &track);
+        let wp_key = Environment::get_nearest_waypoint(&track, &car);
         Self {
             car,
             track,
             observation,
+            rewarded_waypoints: [wp_key].into(),
         }
     }
 
@@ -117,6 +123,39 @@ impl Environment {
         }
     }
 
+    fn get_nearest_waypoint(track: &Track, car: &Car) -> (i32, i32) {
+        let segments = track.nearest_segments(car.position(), 1);
+        let wp_pos = segments[0].end.pos;
+        (wp_pos.x as i32, wp_pos.y as i32)
+    }
+
+    fn compute_reward(&mut self) -> f32 {
+        let wheels_on_track_count = self
+            .observation
+            .wheels_on_track
+            .iter()
+            .filter(|b| **b)
+            .count();
+
+        // penalize 0.25 points if some wheel is out of the track
+        let mut reward = (4 - wheels_on_track_count) as f32 * -0.25;
+
+        // reward for moving forward
+        let velocity = *self.car.velocity();
+        if wheels_on_track_count == 4 && velocity > 1.0 {
+            reward += velocity.ln()
+        }
+
+        // reward for each new discovered waypoint
+        let wp_key = Environment::get_nearest_waypoint(&self.track, &self.car);
+        if wheels_on_track_count == 4 && !self.rewarded_waypoints.contains(&wp_key) {
+            reward += 100.0;
+            self.rewarded_waypoints.insert(wp_key);
+        }
+
+        reward
+    }
+
     pub fn step(&mut self, action: &Action, fixed_time: bool) -> Outcome {
         self.car.update(
             &self.observation.wheels_on_track,
@@ -127,15 +166,7 @@ impl Environment {
         self.observation = Environment::observe(&self.car, &self.track);
 
         let finished = self.track.finish(self.car.bbox());
-        let mut reward = self
-            .observation
-            .wheels_on_track
-            .iter()
-            .map(|&b| if b { 0.0 } else { -0.25 })
-            .sum::<f32>();
-        if finished {
-            reward += 1000.0;
-        }
+        let reward = self.compute_reward();
         Outcome { finished, reward }
     }
 
