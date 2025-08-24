@@ -4,26 +4,28 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
-from torch.distributions import Normal
+from torch.distributions import Categorical
+from sklearn.preprocessing import MinMaxScaler
 
 class PolicyNet(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_dim):
+    def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
         super().__init__()
         self.obs_dim = obs_dim
+        self.scale_layer = create_scale_layer(data_path, obs_dim)
         self.net = nn.Sequential(
             nn.Linear(obs_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            #nn.Linear(hidden_dim, hidden_dim),
+            #nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim),
+            nn.Softmax(dim=-1)
         )
-        self.mean_head = nn.Linear(hidden_dim, action_dim)
-        self.log_std = nn.Parameter(torch.zeros(action_dim))  # learned or fixed
 
-    def forward(self, state):
-        x = self.net(state)
-        mean = torch.tanh(self.mean_head(x))  # keep mean in [-1,1]
-        return mean, self.log_std.exp()  # std > 0
+    def forward(self, observation):
+        scaled = self.scale_layer(observation)
+        return self.net(scaled)
 
     def export(self, path):
         dummy_input = torch.randn(1, self.obs_dim, dtype=torch.float32)
@@ -39,20 +41,53 @@ class PolicyNet(nn.Module):
             },
         )
 
+def create_scale_layer(data_path: str, obs_dim: int):
+    col_names = (
+        ["velocity", "steering_angle", "next_wp_angle", "next_wp_dist"] +
+        [f"wheel_on_track_{i}" for i in ("front_r", "front_l", "rear_r", "rear_l")] +
+        [f"sensor_readings_{i}" for i in range(13)] +
+        ["target_steer", "target_throttle"]
+    )
+    data = pd.read_csv(data_path, names=col_names)
+    scaler = MinMaxScaler(feature_range=(-1, 1), copy=True, clip=False)
+    scaler.fit(data)
+    min_, max_ = scaler.feature_range
+    scale = (max_ - min_) / (scaler.data_max_ - scaler.data_min_)
+    bias = -scaler.data_min_ * scale + min_
 
-def sample_action(policy, state):
-    state = torch.tensor(state, dtype=torch.float32)
-    mean, std = policy(state)
-    dist = Normal(mean, std)
-    action = dist.rsample()                # reparameterized sample
-    log_prob = dist.log_prob(action).sum() # sum over action dims
-    action_clipped = torch.clamp(action, -1, 1)
-    return action_clipped.detach().numpy(), log_prob
+    scale_layer = nn.Linear(obs_dim, obs_dim)
+    with torch.no_grad():
+        scale = torch.tensor(scale[:obs_dim], dtype=torch.float32)
+        bias = torch.tensor(bias[:obs_dim], dtype=torch.float32)
+        scale_layer.weight.copy_(torch.diag(scale))
+        scale_layer.bias.copy_(bias)
+    scale_layer.requires_grad_(False)
+
+    return scale_layer
+
+policy_output_to_action = {
+    0: (1.0, 1.0),
+    1: (0.0, 1.0),
+    2: (-1.0, 1.0),
+    3: (1.0, 0.0),
+    4: (0.0, 0.0),
+    5: (-1.0, 0.0),
+    6: (1.0, -1.0),
+    7: (0.0, -1.0),
+    8: (-1.0, -1.0),
+}
+
+def sample_action(policy, observation):
+    observation = torch.tensor(observation, dtype=torch.float32)
+    probs = policy(observation)
+    m = Categorical(probs)
+    action = m.sample()
+    return action.item(), m.log_prob(action)
 
 def train(batches=500, episodes_per_batch=100, gamma=0.995):
     obs_dim = len(racer_gym.Environment().observation())
     episode_steps = 60*60; # 1 minute @ 60fps
-    policy = PolicyNet(obs_dim=obs_dim, action_dim=2, hidden_dim=32)
+    policy = PolicyNet(data_path="train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 
     for batch in range(batches):
@@ -64,9 +99,8 @@ def train(batches=500, episodes_per_batch=100, gamma=0.995):
             log_probs, rewards = [], []
             observation = env.observation()
             for _step in range(episode_steps):
-                action, log_prob = sample_action(policy, observation)
-                steer, throttle = action
-                observation, reward, finished = env.step(steer, throttle)
+                policy_output, log_prob = sample_action(policy, observation)
+                observation, reward, finished = env.step(*policy_output_to_action[policy_output])
 
                 assert not finished
 
@@ -100,5 +134,6 @@ def train(batches=500, episodes_per_batch=100, gamma=0.995):
     return policy
 
 
-policy = train(batches=10, episodes_per_batch=20, gamma=0.99)
-policy.export("policy.onnx")
+if __name__ == "__main__":
+    policy = train(batches=20, episodes_per_batch=1, gamma=0.99)
+    policy.export("policy.onnx")
