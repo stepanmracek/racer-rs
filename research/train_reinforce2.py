@@ -80,6 +80,9 @@ def main():
             policy.rewards.append(reward)
             ep_reward += reward
 
+            if finished:
+                break
+
         running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
         finish_episode(policy, optimizer)
         print(f"{i_episode},{ep_reward:.2f},{running_reward:.2f}")

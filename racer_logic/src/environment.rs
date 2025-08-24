@@ -129,7 +129,7 @@ impl Environment {
         (wp_pos.x as i32, wp_pos.y as i32)
     }
 
-    fn compute_reward(&mut self) -> f32 {
+    fn compute_reward(&mut self, finished: bool) -> f32 {
         let wheels_on_track_count = self
             .observation
             .wheels_on_track
@@ -153,6 +153,10 @@ impl Environment {
             self.rewarded_waypoints.insert(wp_key);
         }
 
+        if finished {
+            reward += 10_000.0;
+        }
+
         reward
     }
 
@@ -166,7 +170,7 @@ impl Environment {
         self.observation = Environment::observe(&self.car, &self.track);
 
         let finished = self.track.finish(self.car.bbox());
-        let reward = self.compute_reward();
+        let reward = self.compute_reward(finished);
         Outcome { finished, reward }
     }
 
