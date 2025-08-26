@@ -1,15 +1,18 @@
+from turtle import Shape
 from collections import deque
 from itertools import count
 from sklearn.preprocessing import MinMaxScaler
 from torch.distributions import Categorical
 from typing import cast
+import argparse
+import onnx
 import pandas as pd
 import racer_gym
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
 
 class Policy(nn.Module):
     def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
@@ -41,6 +44,16 @@ class Policy(nn.Module):
             input_names=["input"],
             output_names=["output"],
         )
+
+    def load(self, path):
+        w = onnx.load(path).graph.initializer
+        with torch.no_grad():
+            self.scale_layer.weight.copy_(torch.tensor(onnx.numpy_helper.to_array(w[0])))
+            self.scale_layer.bias.copy_(torch.tensor(onnx.numpy_helper.to_array(w[1])))
+            self.layer1.weight.copy_(torch.tensor(onnx.numpy_helper.to_array(w[2])))
+            self.layer1.bias.copy_(torch.tensor(onnx.numpy_helper.to_array(w[3])))
+            self.layer2.weight.copy_(torch.tensor(onnx.numpy_helper.to_array(w[4])))
+            self.layer2.bias.copy_(torch.tensor(onnx.numpy_helper.to_array(w[5])))
 
 
 def create_scale_layer(data_path: str, obs_dim: int) -> nn.Linear:
@@ -98,13 +111,21 @@ def finish_episode(optimizer: optim.Optimizer, rewards: list[float], log_probs: 
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--init-onnx", type=str, required=False)
+    parser.add_argument("--episode-start", type=int, required=False, default=1)
+    args = parser.parse_args()
+
     torch.manual_seed(42)
     obs_dim = len(racer_gym.Environment().observation())
     policy = Policy("train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 
+    if len(args.init_onnx) >= 2:
+        policy.load(args.init_onnx)
+
     running_reward = 10
-    for i_episode in count(1):
+    for i_episode in count(args.episode_start):
         env = racer_gym.Environment(seed=i_episode)
         observation = env.observation()
         ep_reward = 0
