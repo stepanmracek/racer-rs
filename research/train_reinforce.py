@@ -1,18 +1,17 @@
-from turtle import Shape
 from collections import deque
 from itertools import count
 from sklearn.preprocessing import MinMaxScaler
 from torch.distributions import Categorical
+from tqdm import tqdm
 from typing import cast
 import argparse
-import onnx
 import pandas as pd
 import racer_gym
-import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
 
 class Policy(nn.Module):
     def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
@@ -45,15 +44,21 @@ class Policy(nn.Module):
             output_names=["output"],
         )
 
-    def load(self, path):
-        w = onnx.load(path).graph.initializer
-        with torch.no_grad():
-            self.scale_layer.weight.copy_(torch.tensor(onnx.numpy_helper.to_array(w[0])))
-            self.scale_layer.bias.copy_(torch.tensor(onnx.numpy_helper.to_array(w[1])))
-            self.layer1.weight.copy_(torch.tensor(onnx.numpy_helper.to_array(w[2])))
-            self.layer1.bias.copy_(torch.tensor(onnx.numpy_helper.to_array(w[3])))
-            self.layer2.weight.copy_(torch.tensor(onnx.numpy_helper.to_array(w[4])))
-            self.layer2.bias.copy_(torch.tensor(onnx.numpy_helper.to_array(w[5])))
+    def save(self, path: str, optimizer: optim.Optimizer):
+        torch.save(
+            {
+                "policy": self.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "rng": torch.get_rng_state(),
+            },
+            path,
+        )
+
+    def load(self, path: str, optimizer: optim.Optimizer):
+        state = torch.load(path)
+        self.load_state_dict(state["policy"])
+        torch.set_rng_state(state["rng"])
+        optimizer.load_state_dict(state["optimizer"])
 
 
 def create_scale_layer(data_path: str, obs_dim: int) -> nn.Linear:
@@ -112,8 +117,9 @@ def finish_episode(optimizer: optim.Optimizer, rewards: list[float], log_probs: 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--init-onnx", type=str, required=False)
+    parser.add_argument("--init-state", type=str, required=False)
     parser.add_argument("--episode-start", type=int, required=False, default=1)
+    parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
     args = parser.parse_args()
 
     torch.manual_seed(42)
@@ -121,11 +127,11 @@ def main():
     policy = Policy("train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 
-    if len(args.init_onnx) >= 2:
-        policy.load(args.init_onnx)
+    if args.init_state:
+        policy.load(args.init_state, optimizer)
 
     running_reward = 10
-    for i_episode in count(args.episode_start):
+    for i_episode in tqdm(count(args.episode_start)):
         env = racer_gym.Environment(seed=i_episode)
         observation = env.observation()
         ep_reward = 0
@@ -145,8 +151,8 @@ def main():
         finish_episode(optimizer, rewards, log_probs)
         print(f"{i_episode},{ep_reward:.2f},{running_reward:.2f}")
 
-        if i_episode % 100 == 0:
-            policy.export(f"policy-reinforce/policy-reinforce-ep{i_episode:05}.onnx")
+        if i_episode % args.snapshot_interval_episodes == 0:
+            policy.save(f"policy-reinforce/ep{i_episode:05}.pth", optimizer)
 
 
 if __name__ == "__main__":
