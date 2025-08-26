@@ -4,7 +4,7 @@ use racer_logic::{
     environment::Environment,
     states::{Init, State},
 };
-use racer_onnx_controller::OnnxController;
+use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
 
 fn window_conf() -> Conf {
     Conf {
@@ -17,7 +17,7 @@ fn window_conf() -> Conf {
 
 fn controller_factory() -> Box<dyn Controller> {
     if let Some(path) = std::env::args().nth(1) {
-        Box::new(OnnxController::new(&path))
+        Box::new(OnnxController::new(&path, ActionSelectionStrategy::Greedy))
     } else {
         Box::new(KeyboardController::default())
     }
