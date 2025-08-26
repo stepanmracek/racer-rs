@@ -131,7 +131,8 @@ def main():
         policy.load(args.init_state, optimizer)
 
     running_reward = 10
-    for i_episode in tqdm(count(args.episode_start)):
+    episodes = tqdm(count(args.episode_start))
+    for i_episode in episodes:
         env = racer_gym.Environment(seed=i_episode)
         observation = env.observation()
         ep_reward = 0
@@ -150,6 +151,7 @@ def main():
         running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
         finish_episode(optimizer, rewards, log_probs)
         print(f"{i_episode},{ep_reward:.2f},{running_reward:.2f}")
+        episodes.set_postfix_str(f"Running reward: {running_reward:.2f}", refresh=False)
 
         if i_episode % args.snapshot_interval_episodes == 0:
             policy.save(f"policy-reinforce/ep{i_episode:05}.pth", optimizer)
