@@ -35,7 +35,7 @@ impl Segment {
     }
 
     pub fn draw(&self) {
-        let track_color = Color::from_rgba(32, 32, 32, 255);
+        let track_color = Color::from_rgba(48, 48, 48, 255);
         match self.shape {
             Shape::Straight(ref straight) => {
                 for (d, color, thickness) in [

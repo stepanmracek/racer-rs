@@ -1,5 +1,9 @@
+use itertools::Itertools;
 use macroquad::prelude::*;
-use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
+use std::{
+    collections::VecDeque,
+    f32::consts::{FRAC_PI_2, FRAC_PI_6},
+};
 
 use crate::{physics::RotRect, track::Track};
 
@@ -12,6 +16,7 @@ pub struct Car {
     wheels: [Vec2; 4],
     wheel_base: f32,
     bbox: RotRect,
+    skid_marks: std::collections::VecDeque<(Vec2, Vec2)>,
 }
 
 impl Car {
@@ -37,6 +42,7 @@ impl Car {
                 vec2(10.0, 25.0),
                 0.0,
             ),
+            skid_marks: VecDeque::new(),
         }
     }
 
@@ -49,6 +55,14 @@ impl Car {
         self.rotation = rotation;
         self.velocity = velocity;
         self.steering_angle = 0.0
+    }
+
+    fn is_skidding(velocity: f32, steer: f32) -> bool {
+        if velocity.abs() < 25.0 {
+            return false;
+        }
+        let max_steer = FRAC_PI_6 * (1.0 - (velocity.abs() / 170.0).powi(2));
+        steer.abs() > max_steer
     }
 
     pub fn update(
@@ -71,21 +85,34 @@ impl Car {
         }
         self.steering_angle = self.steering_angle.clamp(-FRAC_PI_6, FRAC_PI_6);
 
-        let acceleration = 50.0;
-        self.velocity += throttle * acceleration * dt;
-
         let penalty = wheels_on_track
             .iter()
             .filter(|&&on_track| !on_track)
             .map(|_| 0.99)
             .product::<f32>();
         let friction = 0.995 * penalty;
-        self.velocity *= friction;
 
-        let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
-        let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
-        self.position += pos_dot * dt;
-        self.rotation += theta_dot * dt;
+        let skidding = Car::is_skidding(self.velocity, self.steering_angle);
+
+        if !skidding {
+            let acceleration = 50.0;
+            self.velocity += throttle * acceleration * dt;
+            self.velocity *= friction;
+
+            let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
+            let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
+            self.position += pos_dot * dt;
+            self.rotation += theta_dot * dt;
+        } else {
+            let wheel0 = self.relative_position(&self.wheels[0]);
+            let wheel1 = self.relative_position(&self.wheels[1]);
+            self.skid_marks.push_back((wheel0, wheel1));
+            if self.skid_marks.len() > 100 {
+                self.skid_marks.pop_front();
+            }
+            self.velocity *= friction * 0.95; // increased friction when skidding
+            self.position += Vec2::from_angle(self.rotation) * self.velocity * dt;
+        }
         self.bbox.update(
             self.position_with_offset(self.wheel_base / 2.0),
             self.rotation - FRAC_PI_2,
@@ -93,6 +120,13 @@ impl Car {
     }
 
     pub fn draw(&self) {
+        self.skid_marks.iter().tuple_windows().for_each(|(a, b)| {
+            if a.0.distance_squared(b.0) < 25.0 {
+                draw_line(a.0.x, a.0.y, b.0.x, b.0.y, 1.5, BLACK.with_alpha(0.5));
+                draw_line(a.1.x, a.1.y, b.1.x, b.1.y, 1.5, BLACK.with_alpha(0.5));
+            }
+        });
+
         let draw_rot = self.rotation - FRAC_PI_2;
         let rot_vec = Vec2::from_angle(self.rotation);
         let orientation = Vec2::from_angle(draw_rot);
@@ -168,6 +202,10 @@ impl Car {
 
     pub fn position_with_offset(&self, offset: f32) -> Vec2 {
         self.position + Vec2::from_angle(self.rotation) * offset
+    }
+
+    pub fn relative_position(&self, pos: &Vec2) -> Vec2 {
+        self.position + Vec2::from_angle(self.rotation - FRAC_PI_2).rotate(*pos)
     }
 
     pub fn windshield_position(&self) -> Vec2 {
