@@ -2,7 +2,7 @@ use crate::{
     controller::Controller,
     environment::Environment,
     follow_camera::FollowCamera,
-    states::{State, game::Game},
+    states::{game::Game, State},
 };
 use macroquad::prelude::*;
 
@@ -23,7 +23,7 @@ impl Init {
 
 impl State for Init {
     fn step(&mut self, _environment: &mut Environment) -> Option<Box<dyn State>> {
-        if is_key_pressed(KeyCode::Space) {
+        if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
             Some(Box::new(Game::new(
                 &self.follow_camera,
                 self.controller_factory,

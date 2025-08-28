@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 use racer_logic::{
-    controller::{Controller, KeyboardController},
+    controller::{Controller, TouchController},
     environment::Environment,
     states::{Init, State},
 };
@@ -19,7 +19,7 @@ fn controller_factory() -> Box<dyn Controller> {
     //if let Some(path) = std::env::args().nth(1) {
     //    Box::new(OnnxController::new(&path, ActionSelectionStrategy::Greedy))
     //} else {
-    Box::new(KeyboardController::default())
+    Box::new(TouchController::default())
     //}
 }
 
