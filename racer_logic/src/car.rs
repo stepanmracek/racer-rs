@@ -17,6 +17,7 @@ pub struct Car {
     wheel_base: f32,
     bbox: RotRect,
     skid_marks: std::collections::VecDeque<(Vec2, Vec2)>,
+    skidding: bool,
 }
 
 impl Car {
@@ -43,6 +44,7 @@ impl Car {
                 0.0,
             ),
             skid_marks: VecDeque::new(),
+            skidding: false,
         }
     }
 
@@ -57,12 +59,14 @@ impl Car {
         self.steering_angle = 0.0
     }
 
-    fn is_skidding(velocity: f32, steer: f32) -> bool {
-        if velocity.abs() < 25.0 {
-            return false;
-        }
-        let max_steer = FRAC_PI_6 * (1.0 - (velocity.abs() / 170.0).powi(2));
-        steer.abs() > max_steer
+    #[inline]
+    fn max_steer(&self) -> f32 {
+        FRAC_PI_6 * (1.0 - (self.velocity.abs() / 170.0).powi(2))
+    }
+
+    #[inline]
+    fn dt(fixed: bool) -> f32 {
+        if fixed { 1.0 / 60.0 } else { get_frame_time() }
     }
 
     pub fn update(
@@ -72,11 +76,7 @@ impl Car {
         throttle: f32,
         fixed_time: bool,
     ) {
-        let dt = if fixed_time {
-            1.0 / 60.0
-        } else {
-            get_frame_time()
-        };
+        let dt = Car::dt(fixed_time);
         let turn_speed = FRAC_PI_6;
 
         self.steering_angle += steer * turn_speed * dt;
@@ -92,27 +92,28 @@ impl Car {
             .product::<f32>();
         let friction = 0.995 * penalty;
 
-        let skidding = Car::is_skidding(self.velocity, self.steering_angle);
+        let acceleration = 50.0;
+        self.velocity += throttle * acceleration * dt;
+        self.velocity *= friction;
 
-        if !skidding {
-            let acceleration = 50.0;
-            self.velocity += throttle * acceleration * dt;
-            self.velocity *= friction;
-
-            let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
-            let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
-            self.position += pos_dot * dt;
-            self.rotation += theta_dot * dt;
-        } else {
+        // skidding ?
+        let max_steering = self.max_steer();
+        if self.steering_angle.abs() > max_steering {
+            self.skidding = true;
+            self.steering_angle = self.steering_angle.clamp(-max_steering, max_steering);
             let wheel0 = self.relative_position(&self.wheels[0]);
             let wheel1 = self.relative_position(&self.wheels[1]);
             self.skid_marks.push_back((wheel0, wheel1));
             if self.skid_marks.len() > 100 {
                 self.skid_marks.pop_front();
             }
-            self.velocity *= friction * 0.95; // increased friction when skidding
-            self.position += Vec2::from_angle(self.rotation) * self.velocity * dt;
         }
+
+        let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
+        let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
+        self.position += pos_dot * dt;
+        self.rotation += theta_dot * dt;
+
         self.bbox.update(
             self.position_with_offset(self.wheel_base / 2.0),
             self.rotation - FRAC_PI_2,
@@ -179,6 +180,7 @@ impl Car {
         ans
     }
 
+    #[inline]
     pub fn bbox(&self) -> &RotRect {
         &self.bbox
     }
@@ -196,31 +198,43 @@ impl Car {
             .collect()
     }
 
+    #[inline]
     pub fn position(&self) -> &Vec2 {
         &self.position
     }
 
+    #[inline]
     pub fn position_with_offset(&self, offset: f32) -> Vec2 {
         self.position + Vec2::from_angle(self.rotation) * offset
     }
 
+    #[inline]
     pub fn relative_position(&self, pos: &Vec2) -> Vec2 {
         self.position + Vec2::from_angle(self.rotation - FRAC_PI_2).rotate(*pos)
     }
 
+    #[inline]
     pub fn windshield_position(&self) -> Vec2 {
         self.position_with_offset(10.0)
     }
 
+    #[inline]
     pub fn rotation(&self) -> &f32 {
         &self.rotation
     }
 
+    #[inline]
     pub fn velocity(&self) -> &f32 {
         &self.velocity
     }
 
+    #[inline]
     pub fn steering_angle(&self) -> &f32 {
         &self.steering_angle
+    }
+
+    #[inline]
+    pub fn skidding(&self) -> &bool {
+        &self.skidding
     }
 }
