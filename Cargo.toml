@@ -1,3 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["racer_game", "racer_gym", "racer_headless", "racer_logic", "racer_onnx_controller"]
+members = [
+    "racer",
+    "racer_gym",
+    "racer_headless",
+    "racer_logic",
+    "racer_onnx_controller",
+]
