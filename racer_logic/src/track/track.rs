@@ -1,9 +1,9 @@
 use super::segment::*;
 use super::shape::*;
 use crate::car::Car;
-use crate::physics::RotRect;
 use crate::physics::arc_vs_segment;
 use crate::physics::segment_vs_segment;
+use crate::physics::RotRect;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
@@ -185,7 +185,7 @@ pub fn sensor_readings(
                         );
                         if let Some(intersection) = intersection {
                             let dist = start.distance_squared(intersection);
-                            if nearest.is_none_or(|cur_dist| dist < cur_dist) {
+                            if nearest.is_none() || dist < nearest.unwrap() {
                                 nearest = Some(dist);
                             }
                         }
@@ -200,7 +200,7 @@ pub fn sensor_readings(
                         );
                         if let Some(intersection) = intersection {
                             let dist = start.distance_squared(intersection);
-                            if nearest.is_none_or(|cur_dist| dist < cur_dist) {
+                            if nearest.is_none() || dist < nearest.unwrap() {
                                 nearest = Some(dist);
                             }
                         }

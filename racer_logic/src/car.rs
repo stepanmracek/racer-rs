@@ -47,7 +47,7 @@ impl Car {
     }
 
     pub async fn load_texture(&mut self) {
-        self.texture = Some(load_texture("assets/car.png").await.unwrap());
+        self.texture = Some(load_texture("car.png").await.unwrap());
     }
 
     pub fn reset(&mut self, position: &Vec2, rotation: f32, velocity: f32) {
@@ -122,8 +122,8 @@ impl Car {
     pub fn draw(&self) {
         self.skid_marks.iter().tuple_windows().for_each(|(a, b)| {
             if a.0.distance_squared(b.0) < 25.0 {
-                draw_line(a.0.x, a.0.y, b.0.x, b.0.y, 1.5, BLACK.with_alpha(0.5));
-                draw_line(a.1.x, a.1.y, b.1.x, b.1.y, 1.5, BLACK.with_alpha(0.5));
+                draw_line(a.0.x, a.0.y, b.0.x, b.0.y, 1.5, BLACK);
+                draw_line(a.1.x, a.1.y, b.1.x, b.1.y, 1.5, BLACK);
             }
         });
 

@@ -3,7 +3,7 @@ use crate::{
     controller::Controller,
     environment::{Environment, Observation},
     follow_camera::FollowCamera,
-    states::{State, finish::Finish},
+    states::{finish::Finish, State},
     utils::format_time,
 };
 use macroquad::prelude::*;
@@ -42,7 +42,7 @@ impl Game {
 
     fn draw_observation(observation: &Observation, car: &Car, reward: f32) {
         for (d, (start, end)) in zip(&observation.sensors.distances, &observation.sensors.rays) {
-            draw_line(start.x, start.y, end.x, end.y, 0.3, GREEN.with_alpha(0.2));
+            draw_line(start.x, start.y, end.x, end.y, 0.3, GREEN);
             if let Some(d) = d {
                 let p = (*end - *start).normalize() * *d + *start;
                 draw_circle(p.x, p.y, 1.0, RED);
@@ -59,7 +59,7 @@ impl Game {
             car_pos.x + to_waypoint.x,
             car_pos.y + to_waypoint.y,
             0.5,
-            GREEN.with_alpha(0.5),
+            GREEN,
         );
         push_camera_state();
         set_default_camera();
@@ -72,7 +72,7 @@ impl Game {
             screen_height() * 0.5,
             16.0,
             None,
-            YELLOW.with_alpha(0.3),
+            YELLOW,
         );
         pop_camera_state();
     }

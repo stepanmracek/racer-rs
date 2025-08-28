@@ -1,9 +1,9 @@
 [package]
 name = "racer_logic"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 itertools = "0.14.0"
-macroquad = "0.4.14"
+macroquad = "=0.4.13"
 rstar = "0.12.2"
