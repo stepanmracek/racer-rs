@@ -6,4 +6,5 @@ pub use touch::TouchController;
 
 pub trait Controller {
     fn control(&mut self, observation: &Observation) -> Action;
+    fn draw(&self);
 }

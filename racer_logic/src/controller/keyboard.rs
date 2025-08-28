@@ -16,4 +16,5 @@ impl Controller for KeyboardController {
 
         Action { steer, throttle }
     }
+    fn draw(&self) {}
 }

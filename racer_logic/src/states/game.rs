@@ -111,7 +111,8 @@ impl State for Game {
 
     fn draw(&mut self, environment: &Environment) {
         environment.draw(&mut self.follow_camera);
-        Game::draw_observation(&environment.observation, &environment.car, self.reward);
+        //Game::draw_observation(&environment.observation, &environment.car, self.reward);
         self.draw_stopwatch();
+        self.controller.draw();
     }
 }

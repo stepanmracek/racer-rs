@@ -1,5 +1,5 @@
-use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
+use rand::distr::Distribution;
 use std::collections::HashMap;
 
 use racer_logic::{
@@ -85,4 +85,5 @@ impl Controller for OnnxController {
             ActionSelectionStrategy::Stochastic => self.sample_action(&probs),
         }
     }
+    fn draw(&self) {}
 }
