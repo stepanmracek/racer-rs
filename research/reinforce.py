@@ -84,7 +84,7 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
     running_reward = 10
     episodes = tqdm(count(args.episode_start))
     for i_episode in episodes:
-        env = racer_gym.Environment(seed=i_episode)
+        env = racer_gym.Environment(seed=i_episode, off_track_prob=0.5)
         observation = env.observation()
         ep_reward = 0
         rewards = []

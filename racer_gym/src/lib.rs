@@ -8,10 +8,10 @@ struct Environment {
 #[pymethods]
 impl Environment {
     #[new]
-    #[pyo3(signature = (seed=0))]
-    pub fn new(seed: Option<u64>) -> Self {
+    #[pyo3(signature = (seed=0, off_track_prob=0.0))]
+    pub fn new(seed: Option<u64>, off_track_prob: f32) -> Self {
         Self {
-            env: racer_logic::environment::Environment::new(seed),
+            env: racer_logic::environment::Environment::new(seed, off_track_prob),
         }
     }
 
@@ -27,9 +27,9 @@ impl Environment {
         self.env.observation.clone().into()
     }
 
-    #[pyo3(signature = (seed=0))]
-    pub fn reset(&mut self, seed: Option<u64>) -> Vec<f32> {
-        self.env = racer_logic::environment::Environment::new(seed);
+    #[pyo3(signature = (seed=0, off_track_prob=0.0))]
+    pub fn reset(&mut self, seed: Option<u64>, off_track_prob: f32) -> Vec<f32> {
+        self.env = racer_logic::environment::Environment::new(seed, off_track_prob);
         self.observation()
     }
 }

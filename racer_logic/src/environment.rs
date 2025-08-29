@@ -1,12 +1,13 @@
 use std::{
     collections::HashSet,
+    f32::consts::PI,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
     car::Car,
     follow_camera::FollowCamera,
-    track::{Track, sensor_readings},
+    track::{TRACK_WIDTH, Track, sensor_readings},
 };
 use macroquad::prelude::*;
 
@@ -72,7 +73,7 @@ impl From<Observation> for Vec<f32> {
 }
 
 impl Environment {
-    pub fn new(seed: Option<u64>) -> Self {
+    pub fn new(seed: Option<u64>, off_track_prob: f32) -> Self {
         let seed = seed.unwrap_or_else(|| {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -81,13 +82,23 @@ impl Environment {
         });
         macroquad::rand::srand(seed);
 
-        let car = Car::new(0.0, 15.0);
         let mut track = Track::new();
         for _ in 0..100 {
             track.add_random_shape();
         }
         track.add_finish();
         track.compute_rtree();
+
+        let rnd = macroquad::rand::gen_range(0.0, 1.0);
+        let car = if rnd <= off_track_prob {
+            let x = macroquad::rand::gen_range(-TRACK_WIDTH, TRACK_WIDTH);
+            Car::new(x, 100.)
+                .with_rotation(macroquad::rand::gen_range(-PI, PI))
+                .with_velocity(macroquad::rand::gen_range(-20., 50.))
+        } else {
+            Car::new(0.0, 15.0)
+        };
+
         let observation = Environment::observe(&car, &track);
         let wp_key = Environment::get_nearest_waypoint(&track, &car);
         Self {
@@ -184,6 +195,6 @@ impl Environment {
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(Some(0))
+        Self::new(Some(0), 0.)
     }
 }

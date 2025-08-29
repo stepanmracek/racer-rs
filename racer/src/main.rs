@@ -17,7 +17,10 @@ fn window_conf() -> Conf {
 
 fn controller_factory() -> Box<dyn Controller> {
     if let Some(path) = std::env::args().nth(1) {
-        Box::new(OnnxController::new(&path, ActionSelectionStrategy::Greedy))
+        Box::new(OnnxController::new(
+            &path,
+            ActionSelectionStrategy::Stochastic,
+        ))
     } else {
         Box::new(KeyboardController::default())
     }
@@ -25,7 +28,7 @@ fn controller_factory() -> Box<dyn Controller> {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut environment = Environment::new(None);
+    let mut environment = Environment::new(None, 0.5);
     environment.car.load_texture().await;
     let mut state: Box<dyn State> = Box::new(Init::new(&environment, controller_factory));
 

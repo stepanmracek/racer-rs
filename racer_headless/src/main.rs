@@ -9,7 +9,7 @@ fn main() {
     let gamma = 0.99;
     let mut finish_count = 0;
     for _ in tqdm!(0..10_000) {
-        let mut env = Environment::new(None);
+        let mut env = Environment::new(None, 0.0);
         let mut rewards = vec![];
         for _ in 0..10 * 60 {
             let action = controller.control(&env.observation);

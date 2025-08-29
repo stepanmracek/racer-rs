@@ -48,6 +48,16 @@ impl Car {
         }
     }
 
+    pub fn with_rotation(mut self, rotation: f32) -> Self {
+        self.rotation = rotation;
+        self
+    }
+
+    pub fn with_velocity(mut self, velocity: f32) -> Self {
+        self.velocity = velocity;
+        self
+    }
+
     pub async fn load_texture(&mut self) {
         self.texture = Some(load_texture("assets/car.png").await.unwrap());
     }
