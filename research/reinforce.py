@@ -84,7 +84,7 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
     running_reward = 10
     episodes = tqdm(count(args.episode_start))
     for i_episode in episodes:
-        env = racer_gym.Environment(seed=i_episode, off_track_prob=0.5)
+        env = racer_gym.Environment(seed=i_episode, off_track_prob=args.off_track_prob)
         observation = env.observation()
         ep_reward = 0
         rewards = []
@@ -121,6 +121,7 @@ def main():
     train_parser.add_argument("--init-state", type=str, required=False)
     train_parser.add_argument("--episode-start", type=int, required=False, default=1)
     train_parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
+    train_parser.add_argument("--off-track-prob", type=float, required=False, default=0.5)
 
     export_parser = sub_parsers.add_parser("export")
     export_parser.add_argument("--state", type=str, required=True)
