@@ -7,6 +7,7 @@ use crate::physics::segment_vs_segment;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
+use rstar::RTreeObject;
 use std::f32::consts::FRAC_PI_2;
 use std::rc::Rc;
 
@@ -164,8 +165,8 @@ impl Default for Track {
 }
 
 pub fn sensor_readings(
-    nearest_segments: &Vec<Rc<Segment>>,
-    sensor_rays: &Vec<(Vec2, Vec2)>,
+    nearest_segments: &[Rc<Segment>],
+    sensor_rays: &[(Vec2, Vec2)],
 ) -> Vec<Option<f32>> {
     let mut ans = vec![];
     for (start, end) in sensor_rays {

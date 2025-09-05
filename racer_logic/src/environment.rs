@@ -17,7 +17,86 @@ pub struct Environment {
     pub track: Track,
     pub car: Car,
     pub observation: Observation,
+    goal: Box<dyn Goal>,
+}
+
+pub trait Goal {
+    fn outcome(&mut self, track: &Track, car: &Car, observation: &Observation) -> Outcome;
+}
+
+#[derive(Default)]
+pub struct ReachFinish {
     rewarded_waypoints: HashSet<(i32, i32)>,
+}
+
+impl Goal for ReachFinish {
+    fn outcome(&mut self, track: &Track, car: &Car, observation: &Observation) -> Outcome {
+        let wheels_on_track_count = observation.wheels_on_track.iter().filter(|b| **b).count();
+
+        // penalize 0.25 points if some wheel is out of the track
+        let mut reward = (4 - wheels_on_track_count) as f32 * -0.25;
+
+        // reward for moving forward
+        let velocity = *car.velocity();
+        if wheels_on_track_count == 4 && velocity > 1.0 {
+            reward += velocity.ln()
+        }
+
+        // reward for each new discovered waypoint (but not waypoint on the first segment)
+        let wp_key = Environment::get_nearest_waypoint(&track, &car);
+        if wheels_on_track_count == 4
+            && !self.rewarded_waypoints.contains(&wp_key)
+            && wp_key != (0, 100)
+        {
+            reward += 100.0;
+            self.rewarded_waypoints.insert(wp_key);
+        }
+
+        let finished = track.finish(car.bbox());
+        if finished {
+            reward += 10_000.0;
+        }
+
+        Outcome { finished, reward }
+    }
+}
+
+#[derive(Default)]
+pub struct BackToTrack {
+    prev_wp_observation: Option<NextWaypoint>,
+}
+
+impl Goal for BackToTrack {
+    fn outcome(&mut self, _track: &Track, _car: &Car, observation: &Observation) -> Outcome {
+        let wheels_on_track_count = observation.wheels_on_track.iter().filter(|b| **b).count();
+
+        // penalize 0.25 points if some wheel is out of the track
+        let mut reward = (4 - wheels_on_track_count) as f32 * -0.25;
+
+        // reward if car is approaching waypoint
+        if let Some(prev_wp_obs) = &self.prev_wp_observation {
+            let wp_obs = &observation.next_waypoint;
+            if wp_obs.alignment > prev_wp_obs.alignment {
+                reward += 0.5;
+            }
+            if wp_obs.distance < prev_wp_obs.distance {
+                reward += 0.5;
+            }
+            if wp_obs.angle.abs() < prev_wp_obs.angle.abs() {
+                reward += 0.5;
+            }
+        }
+
+        self.prev_wp_observation = Some(observation.next_waypoint.clone());
+        let finished = wheels_on_track_count == 4
+            && observation.next_waypoint.distance < TRACK_WIDTH / 2.0
+            && observation.next_waypoint.alignment > 0.9
+            && observation.velocity > 0.0;
+        if finished {
+            reward += 1_000.0;
+        }
+        Outcome { finished, reward }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +109,7 @@ pub struct SensorReadings {
 pub struct NextWaypoint {
     pub angle: f32,
     pub distance: f32,
+    pub alignment: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -73,7 +153,7 @@ impl From<Observation> for Vec<f32> {
 }
 
 impl Environment {
-    pub fn new(seed: Option<u64>, off_track_prob: f32) -> Self {
+    pub fn new(seed: Option<u64>, off_track_prob: f32, goal: Box<dyn Goal>) -> Self {
         let seed = seed.unwrap_or_else(|| {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -89,8 +169,8 @@ impl Environment {
         track.add_finish();
         track.compute_rtree();
 
-        let rnd = macroquad::rand::gen_range(0.0, 1.0);
-        let car = if rnd <= off_track_prob {
+        let car = if off_track_prob > 0.0 && macroquad::rand::gen_range(0.0, 1.0) <= off_track_prob
+        {
             let x = macroquad::rand::gen_range(-TRACK_WIDTH, TRACK_WIDTH);
             Car::new(x, 100.)
                 .with_rotation(macroquad::rand::gen_range(-PI, PI))
@@ -100,18 +180,17 @@ impl Environment {
         };
 
         let observation = Environment::observe(&car, &track);
-        let wp_key = Environment::get_nearest_waypoint(&track, &car);
         Self {
             car,
             track,
             observation,
-            rewarded_waypoints: [wp_key].into(),
+            goal,
         }
     }
 
     fn sensor_readings(car: &Car, track: &Track) -> SensorReadings {
-        let x = car.position_with_offset(SENSOR_REACH * 0.5);
-        let nearest_segments = track.nearest_segments(&x, 5);
+        let x = car.windshield_position();
+        let nearest_segments = track.nearest_segments(&x, 10);
         let rays = car.sensor_rays(SENSOR_REACH);
         let distances = sensor_readings(&nearest_segments, &rays);
         SensorReadings { rays, distances }
@@ -119,18 +198,24 @@ impl Environment {
 
     fn observe(car: &Car, track: &Track) -> Observation {
         let car_pos = car.windshield_position();
-        let search_pos = car.position_with_offset(50.0);
-        let waypoint_pos = track.nearest_segments(&search_pos, 1)[0].end.pos;
-        let to_waypoint = waypoint_pos - car_pos;
-        let angle = Vec2::from_angle(*car.rotation()).angle_between(to_waypoint);
+        let waypoint = &track.nearest_segments(&car_pos, 1)[0].end;
+
+        let to_waypoint = waypoint.pos - car_pos;
+        let car_rotation = Vec2::from_angle(*car.rotation());
+        let angle = car_rotation.angle_between(to_waypoint);
         let distance = to_waypoint.length();
+        let alignment = car_rotation.dot(waypoint.dir);
 
         Observation {
             velocity: *car.velocity(),
             steering_angle: *car.steering_angle(),
             wheels_on_track: car.wheels_on_track(track),
             sensors: Environment::sensor_readings(car, track),
-            next_waypoint: NextWaypoint { angle, distance },
+            next_waypoint: NextWaypoint {
+                angle,
+                distance,
+                alignment,
+            },
         }
     }
 
@@ -138,37 +223,6 @@ impl Environment {
         let segments = track.nearest_segments(car.position(), 1);
         let wp_pos = segments[0].end.pos;
         (wp_pos.x as i32, wp_pos.y as i32)
-    }
-
-    fn compute_reward(&mut self, finished: bool) -> f32 {
-        let wheels_on_track_count = self
-            .observation
-            .wheels_on_track
-            .iter()
-            .filter(|b| **b)
-            .count();
-
-        // penalize 0.25 points if some wheel is out of the track
-        let mut reward = (4 - wheels_on_track_count) as f32 * -0.25;
-
-        // reward for moving forward
-        let velocity = *self.car.velocity();
-        if wheels_on_track_count == 4 && velocity > 1.0 {
-            reward += velocity.ln()
-        }
-
-        // reward for each new discovered waypoint
-        let wp_key = Environment::get_nearest_waypoint(&self.track, &self.car);
-        if wheels_on_track_count == 4 && !self.rewarded_waypoints.contains(&wp_key) {
-            reward += 100.0;
-            self.rewarded_waypoints.insert(wp_key);
-        }
-
-        if finished {
-            reward += 10_000.0;
-        }
-
-        reward
     }
 
     pub fn step(&mut self, action: &Action, fixed_time: bool) -> Outcome {
@@ -180,9 +234,8 @@ impl Environment {
         );
         self.observation = Environment::observe(&self.car, &self.track);
 
-        let finished = self.track.finish(self.car.bbox());
-        let reward = self.compute_reward(finished);
-        Outcome { finished, reward }
+        let goal = &mut self.goal;
+        goal.outcome(&self.track, &self.car, &self.observation)
     }
 
     pub fn draw(&self, follow_camera: &mut FollowCamera) {
@@ -195,6 +248,6 @@ impl Environment {
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(Some(0), 0.)
+        Self::new(Some(0), 0., Box::new(ReachFinish::default()))
     }
 }

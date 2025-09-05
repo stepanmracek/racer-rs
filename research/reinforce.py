@@ -14,11 +14,11 @@ from utils import create_scale_layer, policy_output_to_action
 
 
 class Policy(nn.Module):
-    def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
+    def __init__(self, action_dim: int, hidden_dim: int):
         super(Policy, self).__init__()
-        self.obs_dim = obs_dim
-        self.scale_layer = create_scale_layer(data_path, obs_dim)
-        self.layer1 = nn.Linear(obs_dim, hidden_dim)
+        self.scale_layer = create_scale_layer(next_waypoint=True, rays_count=18)
+        self.obs_dim = self.scale_layer._parameters["bias"].shape[0]
+        self.layer1 = nn.Linear(self.obs_dim, hidden_dim)
         self.layer2 = nn.Linear(hidden_dim, action_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -84,7 +84,7 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
     running_reward = 10
     episodes = tqdm(count(args.episode_start))
     for i_episode in episodes:
-        env = racer_gym.Environment(seed=i_episode, off_track_prob=args.off_track_prob)
+        env = racer_gym.Environment(seed=i_episode, off_track_prob=args.off_track_prob, goal=racer_gym.Goal.ReachFinish)
         observation = env.observation()
         ep_reward = 0
         rewards = []
@@ -99,13 +99,14 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
             if finished:
                 break
 
-        running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
-        finish_episode(optimizer, rewards, log_probs)
-        print(f"{i_episode},{ep_reward:.2f},{running_reward:.2f}")
-        episodes.set_postfix_str(f"Running reward: {running_reward:.2f}", refresh=False)
+        if len(rewards) >= 10:
+            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
+            finish_episode(optimizer, rewards, log_probs)
+            print(f"{i_episode},{ep_reward:.2f},{running_reward:.2f}")
+            episodes.set_postfix_str(f"Running reward: {running_reward:.2f}", refresh=False)
 
         if i_episode % args.snapshot_interval_episodes == 0:
-            policy.save(f"policy-reinforce/ep{i_episode:05}.pth", optimizer)
+            policy.save(f"{args.snapshot_prefix}{i_episode:05}.pth", optimizer)
 
 
 def export(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
@@ -121,6 +122,7 @@ def main():
     train_parser.add_argument("--init-state", type=str, required=False)
     train_parser.add_argument("--episode-start", type=int, required=False, default=1)
     train_parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
+    train_parser.add_argument("--snapshot-prefix", type=str, required=False, default="policy-reinforce/ep")
     train_parser.add_argument("--off-track-prob", type=float, required=False, default=0.5)
 
     export_parser = sub_parsers.add_parser("export")
@@ -130,8 +132,7 @@ def main():
     args = parser.parse_args()
 
     torch.manual_seed(42)
-    obs_dim = len(racer_gym.Environment().observation())
-    policy = Policy("train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
+    policy = Policy(action_dim=9, hidden_dim=32)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 
     if args.cmd == "train":

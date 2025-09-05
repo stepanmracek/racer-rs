@@ -10,14 +10,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from utils import create_scale_layer, policy_output_to_action
+from utils import create_scale_layer_from_csv, policy_output_to_action
 
 
 class Policy(nn.Module):
     def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
         super(Policy, self).__init__()
         self.obs_dim = obs_dim
-        self.scale_layer = create_scale_layer(data_path, obs_dim)
+        self.scale_layer = create_scale_layer_from_csv(data_path, obs_dim)
         self.layer1 = nn.Linear(obs_dim, hidden_dim)
         self.action_head = nn.Linear(hidden_dim, action_dim)
         self.value_head = nn.Linear(hidden_dim, 1)

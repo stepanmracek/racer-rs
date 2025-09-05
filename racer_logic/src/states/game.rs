@@ -70,9 +70,9 @@ impl Game {
             ),
             screen_width() * 0.5,
             screen_height() * 0.5,
-            16.0,
+            24.0,
             None,
-            YELLOW.with_alpha(0.3),
+            YELLOW.with_alpha(0.8),
         );
         pop_camera_state();
     }

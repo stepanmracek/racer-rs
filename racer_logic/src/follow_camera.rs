@@ -9,7 +9,7 @@ pub struct FollowCamera {
 
 impl FollowCamera {
     pub fn new(car: &Car) -> Self {
-        let zoom = 8.0;
+        let zoom = 5.0;
         let camera_2d = Camera2D {
             target: *car.position(),
             zoom: vec2(zoom / screen_width(), -zoom / screen_height()),

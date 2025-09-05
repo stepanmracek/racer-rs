@@ -2,7 +2,7 @@ use itertools::Itertools;
 use macroquad::prelude::*;
 use std::{
     collections::VecDeque,
-    f32::consts::{FRAC_PI_2, FRAC_PI_6},
+    f32::consts::{FRAC_1_PI, FRAC_PI_2, FRAC_PI_6, PI},
 };
 
 use crate::{physics::RotRect, track::Track};
@@ -197,8 +197,8 @@ impl Car {
 
     pub fn sensor_rays(&self, sensor_len: f32) -> Vec<(Vec2, Vec2)> {
         let start = self.windshield_position();
-        (-60..=60)
-            .step_by(10)
+        (-180..180)
+            .step_by(20)
             .map(|delta| {
                 let angle = Vec2::from_angle(self.rotation + (delta as f32).to_radians());
                 let start = start + angle.rotate(vec2(5.0, 0.0));

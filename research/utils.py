@@ -1,10 +1,33 @@
 from sklearn.preprocessing import MinMaxScaler
+import math
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 
 
-def create_scale_layer(data_path: str, obs_dim: int) -> nn.Linear:
+def create_scale_layer_from_ranges(
+    data_min: np.ndarray,
+    data_max: np.ndarray,
+    target_range:tuple[float,float] = (-1.0, 1.0),
+) -> nn.Linear:
+    min_, max_ = target_range
+    scale = (max_ - min_) / (data_max - data_min)
+    bias = -data_min * scale + min_
+
+    dim = len(data_min)
+    scale_layer = nn.Linear(dim, dim)
+    with torch.no_grad():
+        scale = torch.tensor(scale, dtype=torch.float32)
+        bias = torch.tensor(bias, dtype=torch.float32)
+        scale_layer.weight.copy_(torch.diag(scale))
+        scale_layer.bias.copy_(bias)
+    scale_layer.requires_grad_(False)
+
+    return scale_layer
+
+
+def create_scale_layer_from_csv(data_path: str, obs_dim: int) -> nn.Linear:
     col_names = (
         ["velocity", "steering_angle", "next_wp_angle", "next_wp_dist"]
         + [f"wheel_on_track_{i}" for i in ("front_r", "front_l", "rear_r", "rear_l")]
@@ -12,21 +35,28 @@ def create_scale_layer(data_path: str, obs_dim: int) -> nn.Linear:
         + ["target_steer", "target_throttle"]
     )
     data = pd.read_csv(data_path, names=col_names)
+    data = data.to_numpy()[:, :obs_dim]
     scaler = MinMaxScaler(feature_range=(-1, 1), copy=True, clip=False)
     scaler.fit(data)
     min_, max_ = scaler.feature_range
-    scale = (max_ - min_) / (scaler.data_max_ - scaler.data_min_)
-    bias = -scaler.data_min_ * scale + min_
+    return create_scale_layer_from_ranges(scaler.data_min_, scaler.data_max_, scaler.feature_range)
 
-    scale_layer = nn.Linear(obs_dim, obs_dim)
-    with torch.no_grad():
-        scale = torch.tensor(scale[:obs_dim], dtype=torch.float32)
-        bias = torch.tensor(bias[:obs_dim], dtype=torch.float32)
-        scale_layer.weight.copy_(torch.diag(scale))
-        scale_layer.bias.copy_(bias)
-    scale_layer.requires_grad_(False)
 
-    return scale_layer
+def create_scale_layer(next_waypoint: bool, rays_count: int) -> nn.Linear:
+    # velocity and steering angle
+    ranges = [(-50.0, 150.0), (-math.pi / 6, math.pi / 6)]
+
+    if next_waypoint:
+        ranges.extend([(-math.pi, math.pi), (0, 205)])
+
+    # wheels on track
+    ranges.extend([(0, 1)] * 4)
+
+    # rays
+    ranges.extend([(0, 205)] * rays_count)
+
+    data_min, data_max = zip(*ranges)
+    return create_scale_layer_from_ranges(np.array(data_min), np.array(data_max), (-1.0, 1.0))
 
 
 policy_output_to_action = {
