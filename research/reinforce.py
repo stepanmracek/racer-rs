@@ -61,17 +61,34 @@ class Policy(nn.Module):
         optimizer.load_state_dict(state["optimizer"])
 
 
-def finish_episode(optimizer: optim.Optimizer, rewards: list[float], log_probs: list[torch.Tensor]):
-    R = 0
+def finish_batch(optimizer: optim.Optimizer, batch_rewards: list[list[float]], batch_log_probs: list[list[torch.Tensor]]):
     policy_loss = torch.scalar_tensor(0.0)
-    returns = deque()
-    for r in reversed(rewards):
-        R = r + 0.99 * R
-        returns.appendleft(R)
-    returns = torch.tensor(returns)
-    returns = (returns - returns.mean()) / (returns.std() + 1e-8)
-    for log_prob, R in zip(log_probs, returns):
-        policy_loss += -log_prob * R
+    all_returns = []
+
+    # Calculate returns for each trajectory in the batch
+    for rewards in batch_rewards:
+        R = 0
+        returns = deque()
+        for r in reversed(rewards):
+            R = r + 0.99 * R
+            returns.appendleft(R)
+        all_returns.extend(returns)
+
+    # Normalize returns across the entire batch
+    all_returns = torch.tensor(all_returns)
+    all_returns = (all_returns - all_returns.mean()) / (all_returns.std() + 1e-8)
+
+    # Calculate policy loss for all trajectories in the batch
+    return_idx = 0
+    for log_probs in batch_log_probs:
+        episode_returns = all_returns[return_idx:return_idx + len(log_probs)]
+        for log_prob, R in zip(log_probs, episode_returns):
+            policy_loss += -log_prob * R
+        return_idx += len(log_probs)
+
+    # Average the loss over the batch
+    policy_loss /= len(batch_rewards)
+
     optimizer.zero_grad()
     policy_loss.backward()
     optimizer.step()
@@ -83,30 +100,43 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
 
     running_reward = 10
     episodes = tqdm(count(args.episode_start))
-    for i_episode in episodes:
-        env = racer_gym.Environment(seed=i_episode, off_track_prob=args.off_track_prob, goal=racer_gym.Goal.ReachFinish)
-        observation = env.observation()
-        ep_reward = 0
-        rewards = []
-        log_probs = []
-        for t in range(60 * 60):
-            action, log_prob = policy.sample_action(observation)
-            observation, reward, finished = env.step(*action)
-            rewards.append(reward)
-            log_probs.append(log_prob)
-            ep_reward += reward
+    trajectories = args.trajectories
 
-            if finished:
-                break
+    for episode in episodes:
+        total_trajectories_reward = 0
+        batch_rewards = []
+        batch_log_probs = []
 
-        if len(rewards) >= 10:
-            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
-            finish_episode(optimizer, rewards, log_probs)
-            print(f"{i_episode},{ep_reward:.2f},{running_reward:.2f}")
+        for trajectory in range(trajectories):
+            total_reward = 0
+            env = racer_gym.Environment(seed=episode * trajectory, off_track_prob=args.off_track_prob, goal=racer_gym.Goal.ReachFinish)
+            observation = env.observation()
+            rewards = []
+            log_probs = []
+
+            for t in range(60 * 60):
+                action, log_prob = policy.sample_action(observation)
+                observation, reward, finished = env.step(*action)
+                rewards.append(reward)
+                log_probs.append(log_prob)
+                total_reward += reward
+
+                if finished:
+                    break
+
+            if len(rewards) >= 10:
+                running_reward = 0.05 * total_reward + (1 - 0.05) * running_reward
+                batch_rewards.append(rewards)
+                batch_log_probs.append(log_probs)
+                total_trajectories_reward += total_reward
+
+        if batch_rewards and batch_log_probs:
+            finish_batch(optimizer, batch_rewards, batch_log_probs)
+            print(f"{episode},{total_trajectories_reward/len(batch_rewards):.2f},{running_reward:.2f}")
             episodes.set_postfix_str(f"Running reward: {running_reward:.2f}", refresh=False)
 
-        if i_episode % args.snapshot_interval_episodes == 0:
-            policy.save(f"{args.snapshot_prefix}{i_episode:05}.pth", optimizer)
+        if episode % args.snapshot_interval_episodes == 0:
+            policy.save(f"{args.snapshot_prefix}{episode:05}.pth", optimizer)
 
 
 def export(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
@@ -124,6 +154,7 @@ def main():
     train_parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
     train_parser.add_argument("--snapshot-prefix", type=str, required=False, default="policy-reinforce/ep")
     train_parser.add_argument("--off-track-prob", type=float, required=False, default=0.5)
+    train_parser.add_argument("--trajectories", type=int, required=False, default=4)
 
     export_parser = sub_parsers.add_parser("export")
     export_parser.add_argument("--state", type=str, required=True)
