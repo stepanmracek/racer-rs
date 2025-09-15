@@ -27,11 +27,17 @@ pub trait Goal {
 #[derive(Default)]
 pub struct ReachFinish {
     rewarded_waypoints: HashSet<(i32, i32)>,
+    out_of_track_in_row: usize,
 }
 
 impl Goal for ReachFinish {
     fn outcome(&mut self, track: &Track, car: &Car, observation: &Observation) -> Outcome {
         let wheels_on_track_count = observation.wheels_on_track.iter().filter(|b| **b).count();
+        if wheels_on_track_count == 4 {
+            self.out_of_track_in_row = 0;
+        } else {
+            self.out_of_track_in_row += 1;
+        }
 
         // penalize 0.25 points if some wheel is out of the track
         let mut reward = (4 - wheels_on_track_count) as f32 * -0.25;
@@ -53,10 +59,14 @@ impl Goal for ReachFinish {
             self.rewarded_waypoints.insert(wp_key);
         }
 
-        let finished = track.finish(car.bbox());
-        if finished {
+        // extra reward for reaching the finish line
+        let finish_line = track.finish(car.bbox());
+        if finish_line {
             reward += 10_000.0;
         }
+
+        // end simulation if reached finish or out of track for too long (5 seconds @ 60 fps)
+        let finished = finish_line || self.out_of_track_in_row > 300;
 
         Outcome { finished, reward }
     }
