@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    f32::consts::PI,
+    f32::consts::{FRAC_PI_2, PI},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -37,8 +37,9 @@ impl Goal for ReachFinish {
         let mut reward = (4 - wheels_on_track_count) as f32 * -0.25;
 
         // reward for moving forward
+        let forward = observation.next_waypoint.angle.abs() <= FRAC_PI_2;
         let velocity = *car.velocity();
-        if wheels_on_track_count == 4 && velocity > 1.0 {
+        if wheels_on_track_count == 4 && velocity > 1.0 && forward {
             reward += velocity.ln()
         }
 
