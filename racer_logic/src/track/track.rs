@@ -7,7 +7,6 @@ use crate::physics::segment_vs_segment;
 use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
-use rstar::RTreeObject;
 use std::f32::consts::FRAC_PI_2;
 use std::rc::Rc;
 

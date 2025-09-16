@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 use racer_logic::{
     controller::{Controller, KeyboardController},
-    environment::{BackToTrack, Environment, ReachFinish},
+    environment::Environment,
     states::{Init, State},
 };
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
@@ -28,7 +28,7 @@ fn controller_factory() -> Box<dyn Controller> {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut environment = Environment::new(None, 0.0, Box::new(ReachFinish::default()));
+    let mut environment = Environment::default();
     environment.car.load_texture().await;
     let mut state: Box<dyn State> = Box::new(Init::new(&environment, controller_factory));
 

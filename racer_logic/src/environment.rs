@@ -50,7 +50,7 @@ impl Goal for ReachFinish {
         }
 
         // reward for each new discovered waypoint (but not waypoint on the first segment)
-        let wp_key = Environment::get_nearest_waypoint(&track, &car);
+        let wp_key = Environment::get_nearest_waypoint(track, car);
         if wheels_on_track_count == 4
             && !self.rewarded_waypoints.contains(&wp_key)
             && wp_key != (0, 100)

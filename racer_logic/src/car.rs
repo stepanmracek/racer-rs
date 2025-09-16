@@ -2,7 +2,7 @@ use itertools::Itertools;
 use macroquad::prelude::*;
 use std::{
     collections::VecDeque,
-    f32::consts::{FRAC_1_PI, FRAC_PI_2, FRAC_PI_6, PI},
+    f32::consts::{FRAC_PI_2, FRAC_PI_6},
 };
 
 use crate::{physics::RotRect, track::Track};
