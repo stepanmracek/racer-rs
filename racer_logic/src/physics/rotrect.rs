@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RotRect {
     center: Vec2,
     half_size: Vec2,
@@ -94,6 +94,21 @@ impl RotRect {
             }
         }
         true
+    }
+
+    pub fn draw(&self) {
+        draw_rectangle_lines_ex(
+            self.center.x,
+            self.center.y,
+            self.half_size.x * 2.0,
+            self.half_size.y * 2.0,
+            0.5,
+            DrawRectangleParams {
+                color: WHITE,
+                offset: vec2(0.5, 0.5),
+                rotation: self.rotation,
+            },
+        );
     }
 }
 

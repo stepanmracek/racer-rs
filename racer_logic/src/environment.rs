@@ -237,16 +237,27 @@ impl Environment {
     }
 
     pub fn step(&mut self, action: &Action, fixed_time: bool) -> Outcome {
-        self.car.update(
+        let intention = self.car.control(
             &self.observation.wheels_on_track,
             action.steer,
             action.throttle,
             fixed_time,
         );
-        self.observation = Environment::observe(&self.car, &self.track);
 
-        let goal = &mut self.goal;
-        goal.outcome(&self.track, &self.car, &self.observation)
+        let collision = self
+            .track
+            .obstacles
+            .iter()
+            .any(|o| intention.bbox().collide(o));
+
+        if !collision {
+            self.car.apply_intention(intention);
+        } else {
+            self.car.handle_collision();
+        }
+
+        self.observation = Environment::observe(&self.car, &self.track);
+        self.goal.outcome(&self.track, &self.car, &self.observation)
     }
 
     pub fn draw(&self, follow_camera: &mut FollowCamera) {

@@ -20,6 +20,22 @@ pub struct Car {
     skidding: bool,
 }
 
+pub struct Intention {
+    steering_angle: f32,
+    velocity: f32,
+    position: Vec2,
+    rotation: f32,
+    skidding: bool,
+    bbox: RotRect,
+}
+
+impl Intention {
+    #[inline]
+    pub fn bbox(&self) -> &RotRect {
+        &self.bbox
+    }
+}
+
 impl Car {
     pub fn new(x: f32, y: f32) -> Self {
         let wheel_base = 14.0;
@@ -70,8 +86,8 @@ impl Car {
     }
 
     #[inline]
-    fn max_steer(&self) -> f32 {
-        FRAC_PI_6 * (1.0 - (self.velocity.abs() / 170.0).powi(2))
+    fn max_steer(velocity: f32) -> f32 {
+        FRAC_PI_6 * (1.0 - (velocity.abs() / 170.0).powi(2))
     }
 
     #[inline]
@@ -79,21 +95,22 @@ impl Car {
         if fixed { 1.0 / 60.0 } else { get_frame_time() }
     }
 
-    pub fn update(
-        &mut self,
+    pub fn control(
+        &self,
         wheels_on_track: &[bool; 4],
         steer: f32,
         throttle: f32,
         fixed_time: bool,
-    ) {
+    ) -> Intention {
         let dt = Car::dt(fixed_time);
         let turn_speed = FRAC_PI_6;
 
-        self.steering_angle += steer * turn_speed * dt;
+        let mut steering_angle = self.steering_angle + steer * turn_speed * dt;
         if steer == 0.0 {
-            self.steering_angle = self.steering_angle.lerp(0.0, (10.0 * dt).clamp(0.0, 1.0));
+            let t = (10.0 * dt).clamp(0.0, 1.0);
+            steering_angle = steering_angle.lerp(0.0, t);
         }
-        self.steering_angle = self.steering_angle.clamp(-FRAC_PI_6, FRAC_PI_6);
+        steering_angle = steering_angle.clamp(-FRAC_PI_6, FRAC_PI_6);
 
         let penalty = wheels_on_track
             .iter()
@@ -103,14 +120,46 @@ impl Car {
         let friction = 0.995 * penalty;
 
         let acceleration = 50.0;
-        self.velocity += throttle * acceleration * dt;
-        self.velocity *= friction;
+        let mut velocity = self.velocity + throttle * acceleration * dt;
+        velocity *= friction;
 
         // skidding ?
-        let max_steering = self.max_steer();
-        if self.steering_angle.abs() > max_steering {
-            self.skidding = true;
-            self.steering_angle = self.steering_angle.clamp(-max_steering, max_steering);
+        let max_steering = Car::max_steer(velocity);
+        let skidding = if steering_angle.abs() > max_steering {
+            steering_angle = steering_angle.clamp(-max_steering, max_steering);
+            true
+        } else {
+            false
+        };
+
+        let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
+        let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
+        let position = self.position + pos_dot * dt;
+        let rotation = self.rotation + theta_dot * dt;
+
+        let mut bbox = self.bbox.clone();
+        let bbox_center = position + Vec2::from_angle(rotation) * (self.wheel_base / 2.0);
+        bbox.update(bbox_center, rotation - FRAC_PI_2);
+
+        Intention {
+            steering_angle,
+            velocity,
+            position,
+            rotation,
+            skidding,
+            bbox,
+        }
+    }
+
+    pub fn apply_intention(&mut self, intention: Intention) {
+        self.steering_angle = intention.steering_angle;
+        self.velocity = intention.velocity;
+        self.position = intention.position;
+        self.rotation = intention.rotation;
+        self.skidding = intention.skidding;
+        self.bbox = intention.bbox;
+
+        if intention.skidding {
             let wheel0 = self.relative_position(&self.wheels[0]);
             let wheel1 = self.relative_position(&self.wheels[1]);
             self.skid_marks.push_back((wheel0, wheel1));
@@ -118,16 +167,11 @@ impl Car {
                 self.skid_marks.pop_front();
             }
         }
+    }
 
-        let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
-        let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
-        self.position += pos_dot * dt;
-        self.rotation += theta_dot * dt;
-
-        self.bbox.update(
-            self.position_with_offset(self.wheel_base / 2.0),
-            self.rotation - FRAC_PI_2,
-        );
+    pub fn handle_collision(&mut self) {
+        self.velocity = 0.0;
+        self.skidding = false;
     }
 
     pub fn draw(&self) {
@@ -177,6 +221,8 @@ impl Car {
                 },
             );
         }
+
+        self.bbox.draw();
     }
 
     pub fn wheels_on_track(&self, track: &Track) -> [bool; 4] {

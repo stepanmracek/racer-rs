@@ -17,6 +17,7 @@ pub struct Track {
     segments: Vec<Rc<Segment>>,
     rtree: Option<rstar::RTree<TreeNode>>,
     finish: Option<RotRect>,
+    pub obstacles: Vec<RotRect>,
 }
 
 impl Track {
@@ -25,6 +26,11 @@ impl Track {
             segments: vec![],
             rtree: None,
             finish: None,
+            obstacles: vec![
+                RotRect::new(vec2(0.0, 100.0), vec2(50.0, 25.0), 1.0),
+                RotRect::new(vec2(50.0, 50.0), vec2(10.0, 25.0), -1.0),
+                RotRect::new(vec2(-50.0, 50.0), vec2(10.0, 25.0), 1.0),
+            ],
         };
         track.add_shape(Shape::Straight(Straight {
             length: 100.0,
@@ -44,6 +50,7 @@ impl Track {
                 .locate_in_envelope_intersecting(&envelope)
                 .for_each(|segment| segment.data.draw());
         }
+        self.obstacles.iter().for_each(|o| o.draw());
     }
 
     pub fn on_track(&self, pos: &Vec2) -> bool {
