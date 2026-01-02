@@ -12,21 +12,22 @@ use std::iter::zip;
 pub struct Game {
     follow_camera: FollowCamera,
     state_started: f64,
-    controller: Box<dyn Controller>,
-    reward: f32,
+    controllers: Vec<Box<dyn Controller>>,
+    rewards: Vec<f32>,
 }
 
 impl Game {
     pub fn new(
         follow_camera: &FollowCamera,
-        controller_factory: fn() -> Box<dyn Controller>,
+        controller_factories: &[fn() -> Box<dyn Controller>],
     ) -> Self {
         let follow_camera = follow_camera.clone();
+        let (rewards, controllers) = controller_factories.iter().map(|f| (0.0, f())).collect();
         Self {
             follow_camera,
             state_started: get_time(),
-            controller: controller_factory(),
-            reward: 0.0,
+            controllers,
+            rewards,
         }
     }
 
@@ -80,26 +81,30 @@ impl Game {
 
 impl State for Game {
     fn step(&mut self, environment: &mut Environment) -> Option<Box<dyn State>> {
-        //let mut vec: Vec<f32> = environment.observation.clone().into();
-        let action = self.controller.control(&environment.observation);
-        //vec.extend([action.steer, action.throttle]);
-        //println!("{vec:?}");
+        let actions: Vec<_> = self
+            .controllers
+            .iter_mut()
+            .zip(&environment.observations)
+            .map(|(ctrl, obs)| ctrl.control(obs))
+            .collect();
+        let outcomes = environment.step(&actions, false);
+        self.rewards
+            .iter_mut()
+            .zip(&outcomes)
+            .for_each(|(reward, o)| *reward += o.reward);
 
-        let outcome = environment.step(&action, false);
-        self.reward += outcome.reward;
-
-        if is_key_pressed(KeyCode::Space) {
+        /*if is_key_pressed(KeyCode::Space) {
             let nearest_segment = &environment
                 .track
-                .nearest_segments(environment.car.position(), 1)[0];
-            environment.car.reset(
+                .nearest_segments(environment.cars[0].position(), 1)[0];
+            environment.cars[0].reset(
                 &nearest_segment.start.pos,
                 nearest_segment.start.dir.to_angle(),
                 0.0,
             );
-        }
+        }*/
 
-        if outcome.finished {
+        if outcomes.iter().any(|o| o.finished) {
             Some(Box::new(Finish::new(
                 &self.follow_camera,
                 self.current_time(),
@@ -111,7 +116,15 @@ impl State for Game {
 
     fn draw(&mut self, environment: &Environment) {
         environment.draw(&mut self.follow_camera);
-        Game::draw_observation(&environment.observation, &environment.car, self.reward);
+        /*environment
+        .observations
+        .iter()
+        .zip(&environment.cars)
+        .zip(&self.rewards)
+        .for_each(|((obs, car), rew)| {
+            Game::draw_observation(obs, car, *rew);
+        });*/
+
         self.draw_stopwatch();
     }
 }

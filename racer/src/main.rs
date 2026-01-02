@@ -29,8 +29,15 @@ fn controller_factory() -> Box<dyn Controller> {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut environment = Environment::default();
-    environment.car.load_texture().await;
-    let mut state: Box<dyn State> = Box::new(Init::new(&environment, controller_factory));
+    for car in environment.cars.iter_mut() {
+        car.load_texture().await
+    }
+    let ctrl_factories = environment
+        .cars
+        .iter()
+        .map(|_| controller_factory as fn() -> Box<dyn Controller>)
+        .collect();
+    let mut state: Box<dyn State> = Box::new(Init::new(&environment, ctrl_factories));
 
     loop {
         if let Some(next_state) = state.step(&mut environment) {

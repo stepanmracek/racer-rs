@@ -12,10 +12,10 @@ fn main() {
         let mut env = Environment::default();
         let mut rewards = vec![];
         for _ in 0..10 * 60 {
-            let action = controller.control(&env.observation);
-            let output = env.step(&action, true);
-            rewards.push(output.reward);
-            if output.finished {
+            let action = controller.control(&env.observations[0]);
+            let output = env.step(&[action], true);
+            rewards.push(output[0].reward);
+            if output[0].finished {
                 print!("Finished!: ");
                 finish_count += 1;
                 break;

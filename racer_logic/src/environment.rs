@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    f32::consts::{FRAC_PI_2, PI},
+    f32::consts::FRAC_PI_2,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -15,8 +15,8 @@ pub const SENSOR_REACH: f32 = 205.0;
 
 pub struct Environment {
     pub track: Track,
-    pub car: Car,
-    pub observation: Observation,
+    pub cars: Vec<Car>,
+    pub observations: Vec<Observation>,
     goal: Box<dyn Goal>,
 }
 
@@ -66,7 +66,7 @@ impl Goal for ReachFinish {
         }
 
         // end simulation if reached finish or out of track for too long (5 seconds @ 60 fps)
-        let finished = finish_line || self.out_of_track_in_row > 300;
+        let finished = finish_line; // || self.out_of_track_in_row > 300;
 
         Outcome { finished, reward }
     }
@@ -164,7 +164,7 @@ impl From<Observation> for Vec<f32> {
 }
 
 impl Environment {
-    pub fn new(seed: Option<u64>, off_track_prob: f32, goal: Box<dyn Goal>) -> Self {
+    pub fn new(seed: Option<u64>, cars_count: usize, goal: Box<dyn Goal>) -> Self {
         let seed = seed.unwrap_or_else(|| {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -180,21 +180,25 @@ impl Environment {
         track.add_finish();
         track.compute_rtree();
 
-        let car = if off_track_prob > 0.0 && macroquad::rand::gen_range(0.0, 1.0) <= off_track_prob
-        {
-            let x = macroquad::rand::gen_range(-TRACK_WIDTH, TRACK_WIDTH);
-            Car::new(x, 100.)
-                .with_rotation(macroquad::rand::gen_range(-PI, PI))
-                .with_velocity(macroquad::rand::gen_range(-20., 50.))
-        } else {
-            Car::new(0.0, 15.0)
-        };
-
-        let observation = Environment::observe(&car, &track);
+        let cars: Vec<_> = (0..cars_count)
+            .map(|i| {
+                let i = i as i32;
+                let x = if i == 0 {
+                    0
+                } else {
+                    ((i + 1) / 2) * if i % 2 == 0 { -15 } else { 15 }
+                };
+                Car::new(x as f32, 15.0)
+            })
+            .collect();
+        let observations = cars
+            .iter()
+            .map(|car| Environment::observe(car, &track))
+            .collect();
         Self {
-            car,
+            cars,
             track,
-            observation,
+            observations,
             goal,
         }
     }
@@ -236,40 +240,42 @@ impl Environment {
         (wp_pos.x as i32, wp_pos.y as i32)
     }
 
-    pub fn step(&mut self, action: &Action, fixed_time: bool) -> Outcome {
-        let intention = self.car.control(
-            &self.observation.wheels_on_track,
-            action.steer,
-            action.throttle,
-            fixed_time,
-        );
-
-        let collision = self
-            .track
-            .obstacles
+    pub fn step(&mut self, actions: &[Action], fixed_time: bool) -> Vec<Outcome> {
+        let (observations, outcomes) = actions
             .iter()
-            .any(|o| intention.bbox().collide(o));
+            .zip(&mut self.cars)
+            .zip(&self.observations)
+            .map(|((action, car), old_observation)| {
+                let intention = car.control(
+                    &old_observation.wheels_on_track,
+                    action.steer,
+                    action.throttle,
+                    fixed_time,
+                );
 
-        if !collision {
-            self.car.apply_intention(intention);
-        } else {
-            self.car.handle_collision();
-        }
+                car.apply_intention(intention);
+                //car.handle_collision();
 
-        self.observation = Environment::observe(&self.car, &self.track);
-        self.goal.outcome(&self.track, &self.car, &self.observation)
+                let observation = Environment::observe(car, &self.track);
+                let outcome = self.goal.outcome(&self.track, car, &observation);
+                (observation, outcome)
+            })
+            .collect();
+
+        self.observations = observations;
+        outcomes
     }
 
     pub fn draw(&self, follow_camera: &mut FollowCamera) {
         clear_background(DARKGREEN);
-        follow_camera.update(&self.car);
-        self.track.draw(&self.car);
-        self.car.draw();
+        follow_camera.update(&self.cars[0]);
+        self.track.draw(&self.cars[0]);
+        self.cars.iter().for_each(|car| car.draw());
     }
 }
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(Some(0), 0., Box::new(ReachFinish::default()))
+        Self::new(Some(0), 5, Box::new(ReachFinish::default()))
     }
 }
