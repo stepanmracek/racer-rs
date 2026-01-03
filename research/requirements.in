@@ -5,6 +5,8 @@ onnx
 onnxruntime
 pandas
 scikit-learn
+sb3-contrib
+stable-baselines3[extra]
 torch==2.8.0+cpu
 tqdm
 uv
