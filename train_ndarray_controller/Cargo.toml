@@ -1,11 +1,12 @@
 [package]
-name = "racer"
+name = "train_ndarray_controller"
 version = "0.1.0"
 edition = "2024"
-default-run = "racer"
 
 [dependencies]
-macroquad = "0.4.14"
+kdam = "0.6.3"
+ndarray = { version = "0.17.1", features = ["serde"] }
+ndarray-rand = "0.16.0"
 racer_logic = { path = "../racer_logic" }
-racer_onnx_controller = { path = "../racer_onnx_controller" }
 racer_ndarray_controller = { path = "../racer_ndarray_controller" }
+rand = "0.9.2"

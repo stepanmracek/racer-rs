@@ -49,6 +49,10 @@ impl Goal for ReachFinish {
             reward += velocity.ln()
         }
 
+        if velocity < 0.0 {
+            reward -= (velocity.abs() + 1.0).ln()
+        }
+
         // reward for each new discovered waypoint (but not waypoint on the first segment)
         let wp_key = Environment::get_nearest_waypoint(track, car);
         if wheels_on_track_count == 4
