@@ -91,6 +91,7 @@ def main():
         callback=eval_callback,
     )
 
+    model.save("sb3_ppo")
     print(model.policy)
 
 
