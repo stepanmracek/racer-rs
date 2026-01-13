@@ -70,9 +70,14 @@ impl Goal for ReachFinish {
         }
 
         // end simulation if reached finish or out of track for too long (5 seconds @ 60 fps)
-        let finished = finish_line || self.out_of_track_in_row > 300;
+        let truncated = self.out_of_track_in_row > 300;
+        let terminated = finish_line || truncated;
 
-        Outcome { finished, reward }
+        Outcome {
+            terminated,
+            truncated,
+            reward,
+        }
     }
 }
 
@@ -103,14 +108,18 @@ impl Goal for BackToTrack {
         }
 
         self.prev_wp_observation = Some(observation.next_waypoint.clone());
-        let finished = wheels_on_track_count == 4
+        let terminated = wheels_on_track_count == 4
             && observation.next_waypoint.distance < TRACK_WIDTH / 2.0
             && observation.next_waypoint.alignment > 0.9
             && observation.velocity > 0.0;
-        if finished {
+        if terminated {
             reward += 1_000.0;
         }
-        Outcome { finished, reward }
+        Outcome {
+            terminated,
+            reward,
+            truncated: false,
+        }
     }
 }
 
@@ -144,7 +153,12 @@ pub struct Action {
 
 #[derive(Debug)]
 pub struct Outcome {
-    pub finished: bool,
+    // Whether the agent reaches the terminal state
+    // which can be positive or negative
+    pub terminated: bool,
+
+    // Whether the truncation condition is satisfied.
+    pub truncated: bool,
     pub reward: f32,
 }
 

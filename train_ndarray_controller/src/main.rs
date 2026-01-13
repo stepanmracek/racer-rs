@@ -36,12 +36,12 @@ fn evaluate(controller: &mut NdarrayController, env_seed: u64) -> f32 {
         let action = controller.control(&env.observation);
         let output = env.step(&action, true);
         reward += output.reward;
-        if output.finished {
+        if output.terminated {
             break;
         }
     }
 
-    return reward;
+    reward
 }
 
 fn evaluate_population(population: &mut [NdarrayController], env_seed: u64) -> Vec<f32> {
@@ -89,18 +89,14 @@ fn ga_step(
     let rewards = evaluate_population(&mut population, generation);
     let avg_reward = rewards.iter().sum::<f32>() / rewards.len() as f32;
 
-    let mut pop_with_rewards: Vec<_> =
-        std::iter::zip(population.into_iter(), rewards.into_iter()).collect();
+    let mut pop_with_rewards: Vec<_> = std::iter::zip(population, rewards).collect();
     pop_with_rewards.sort_by(|(_, a), (_, b)| b.total_cmp(a));
 
-    println!(
-        "{}: Best: {}, average: {}",
-        generation, pop_with_rewards[0].1, avg_reward
-    );
+    println!("{},{},{}", generation, pop_with_rewards[0].1, avg_reward);
 
-    pop_with_rewards[0]
-        .0
-        .save(&format!("controllers/{generation:05}.json"));
+    pop_with_rewards[0].0.save(&format!(
+        "research/ndarray_controllers/{generation:05}.json"
+    ));
 
     let mut new_generation: Vec<_> = pop_with_rewards
         .iter()
@@ -136,7 +132,6 @@ fn main() {
     let settings = GASettings::default();
     let init_size = settings.elite + settings.selected_pairs * settings.childred_per_pair;
     let mut population: Vec<_> = (0..init_size)
-        .into_iter()
         .map(|_| NdarrayController::random())
         .collect();
 

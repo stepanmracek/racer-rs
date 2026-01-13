@@ -40,7 +40,7 @@ impl Game {
         get_time() - self.state_started
     }
 
-    fn draw_observation(observation: &Observation, car: &Car, reward: f32) {
+    fn draw_observation(observation: &Observation, _car: &Car, reward: f32) {
         for (d, (start, end)) in zip(&observation.sensors.distances, &observation.sensors.rays) {
             draw_line(start.x, start.y, end.x, end.y, 0.3, GREEN.with_alpha(0.2));
             if let Some(d) = d {
@@ -49,7 +49,7 @@ impl Game {
             }
         }
 
-        let to_waypoint = Vec2::from_angle(*car.rotation()).rotate(
+        /*let to_waypoint = Vec2::from_angle(*car.rotation()).rotate(
             Vec2::from_angle(observation.next_waypoint.angle) * observation.next_waypoint.distance,
         );
         let car_pos = car.windshield_position();
@@ -60,14 +60,11 @@ impl Game {
             car_pos.y + to_waypoint.y,
             0.5,
             GREEN.with_alpha(0.5),
-        );
+        );*/
         push_camera_state();
         set_default_camera();
         draw_multiline_text(
-            &format!(
-                "next_waypoint: {:.2}\nspeed: {:.2}\nreward: {reward:.2}",
-                observation.next_waypoint.angle, observation.velocity
-            ),
+            &format!("speed: {:.2}\nreward: {reward:.2}", observation.velocity),
             screen_width() * 0.5,
             screen_height() * 0.5,
             24.0,
@@ -99,7 +96,7 @@ impl State for Game {
             );
         }
 
-        if outcome.finished {
+        if outcome.terminated {
             Some(Box::new(Finish::new(
                 &self.follow_camera,
                 self.current_time(),

@@ -4,7 +4,6 @@ use racer_logic::{
     environment::Environment,
     states::{Init, State},
 };
-use racer_ndarray_controller::NdarrayController;
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
 
 fn window_conf() -> Conf {
@@ -18,11 +17,10 @@ fn window_conf() -> Conf {
 
 fn controller_factory() -> Box<dyn Controller> {
     if let Some(path) = std::env::args().nth(1) {
-        Box::new(NdarrayController::load(&path))
-        /*Box::new(OnnxController::new(
+        Box::new(OnnxController::new(
             &path,
             ActionSelectionStrategy::Stochastic,
-        ))*/
+        ))
     } else {
         Box::new(KeyboardController::default())
     }

@@ -1,37 +1,31 @@
 use kdam::tqdm;
-use racer_logic::{controller::Controller, environment::Environment};
+use racer_logic::{
+    controller::Controller,
+    environment::{Environment, ReachFinish},
+};
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
 
 fn main() {
     let onnx_path = std::env::args().nth(1).unwrap();
     let mut controller = OnnxController::new(&onnx_path, ActionSelectionStrategy::Greedy);
 
-    let gamma = 0.99;
     let mut finish_count = 0;
-    for _ in tqdm!(0..10_000) {
-        let mut env = Environment::default();
-        let mut rewards = vec![];
-        for _ in 0..10 * 60 {
+    let mut fail_count = 0;
+    for _ in tqdm!(0..1_000) {
+        let mut env = Environment::new(None, 0.0, Box::new(ReachFinish::default()));
+        for _ in 0..120 * 60 {
             let action = controller.control(&env.observation);
             let output = env.step(&action, true);
-            rewards.push(output.reward);
-            if output.finished {
-                print!("Finished!: ");
-                finish_count += 1;
+            if output.terminated {
+                if !output.truncated {
+                    finish_count += 1;
+                } else {
+                    fail_count += 1;
+                }
                 break;
             }
         }
-        let mut discounted_reward: Vec<f32> = rewards
-            .iter()
-            .rev()
-            .scan(0.0, |acc, r| {
-                *acc = *acc * gamma + r;
-                Some(*acc)
-            })
-            .collect();
-        discounted_reward.reverse();
-        assert_eq!(discounted_reward.len(), rewards.len());
-        println!("{discounted_reward:?}");
     }
-    eprintln!("Finished episodes: {finish_count}");
+    eprintln!("Wins: {finish_count}");
+    eprintln!("Losses: {fail_count}");
 }

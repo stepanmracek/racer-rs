@@ -40,10 +40,10 @@ impl Environment {
         let outcome = self.env.step(&action, true);
 
         let observation: Vec<f32> = self.env.observation.clone().into();
-        (observation, outcome.reward, outcome.finished)
+        (observation, outcome.reward, outcome.terminated)
     }
 
-    fn observation(&self) -> Vec<f32> {
+    fn observation(&self) -> Vec<f32> {eprintln!("Finished episodes: {finish_count}");
         self.env.observation.clone().into()
     }
 

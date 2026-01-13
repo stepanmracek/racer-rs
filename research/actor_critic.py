@@ -10,14 +10,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from utils import create_scale_layer_from_csv, policy_output_to_action
+from utils import create_scale_layer, policy_output_to_action
 
 
 class Policy(nn.Module):
     def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
         super(Policy, self).__init__()
         self.obs_dim = obs_dim
-        self.scale_layer = create_scale_layer_from_csv(data_path, obs_dim)
+        self.scale_layer = create_scale_layer(next_waypoint=True, rays_count=18)
         self.layer1 = nn.Linear(obs_dim, hidden_dim)
         self.action_head = nn.Linear(hidden_dim, action_dim)
         self.value_head = nn.Linear(hidden_dim, 1)
@@ -88,18 +88,7 @@ def finish_episode(
     optimizer.step()
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--init-state", type=str, required=False)
-    parser.add_argument("--episode-start", type=int, required=False, default=1)
-    parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
-    args = parser.parse_args()
-
-    torch.manual_seed(42)
-    obs_dim = len(racer_gym.Environment().observation())
-    policy = Policy("train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
-    optimizer = optim.Adam(policy.parameters(), lr=1e-3)
-
+def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
     if args.init_state:
         policy.load(args.init_state, optimizer)
 
@@ -130,6 +119,37 @@ def main():
 
         if i_episode % args.snapshot_interval_episodes == 0:
             policy.save(f"policy-actor-critic/ep{i_episode:05}.pth", optimizer)
+
+
+def export(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
+    policy.load(args.state, optimizer)
+    policy.export(args.onnx)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    sub_parsers = parser.add_subparsers(required=True, dest="cmd")
+
+    train_parser = sub_parsers.add_parser("train")
+    train_parser.add_argument("--init-state", type=str, required=False)
+    train_parser.add_argument("--episode-start", type=int, required=False, default=1)
+    train_parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
+
+    export_parser = sub_parsers.add_parser("export")
+    export_parser.add_argument("--state", type=str, required=True)
+    export_parser.add_argument("--onnx", type=str, required=True)
+
+    args = parser.parse_args()
+
+    torch.manual_seed(42)
+    obs_dim = len(racer_gym.Environment().observation())
+    policy = Policy("train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
+    optimizer = optim.Adam(policy.parameters(), lr=1e-3)
+
+    if args.cmd == "train":
+        train(args, policy, optimizer)
+    elif args.cmd == "export":
+        export(args, policy, optimizer)
 
 
 if __name__ == "__main__":
