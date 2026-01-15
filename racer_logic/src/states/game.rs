@@ -7,25 +7,27 @@ use crate::{
     utils::format_time,
 };
 use macroquad::prelude::*;
-use std::{cell::RefCell, iter::zip, rc::Rc};
+use std::iter::zip;
 
 pub struct Game {
     follow_camera: FollowCamera,
     state_started: f64,
-    controller: Rc<RefCell<dyn Controller>>,
+    controller: Box<dyn Controller>,
     reward: f32,
 }
 
 impl Game {
-    pub fn new(follow_camera: &FollowCamera, controller: Rc<RefCell<dyn Controller>>) -> Self {
+    pub fn new(follow_camera: &FollowCamera, controller: Box<dyn Controller>) -> Self {
         let follow_camera = follow_camera.clone();
-        controller.borrow_mut().reset();
-        Self {
+        let mut game = Self {
             follow_camera,
             state_started: get_time(),
             controller,
             reward: 0.0,
-        }
+        };
+
+        game.controller.reset();
+        game
     }
 
     fn draw_stopwatch(&self) {
@@ -75,10 +77,7 @@ impl Game {
 
 impl State for Game {
     fn step(&mut self, environment: &mut Environment) -> Option<Box<dyn State>> {
-        let action = self
-            .controller
-            .borrow_mut()
-            .control(&environment.observation);
+        let action = self.controller.control(&environment.observation);
 
         let outcome = environment.step(&action, false);
         self.reward += outcome.reward;

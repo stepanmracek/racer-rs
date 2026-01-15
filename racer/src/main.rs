@@ -7,7 +7,6 @@ use racer_logic::{
 };
 use racer_ndarray_controller::NdarrayController;
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -28,18 +27,18 @@ fn window_conf() -> Conf {
     }
 }
 
-fn controller() -> Rc<RefCell<dyn Controller>> {
+fn controller() -> Box<dyn Controller> {
     let args = Args::parse();
 
     if let Some(path) = args.onnx {
-        Rc::new(RefCell::new(OnnxController::new(
+        Box::new(OnnxController::new(
             &path,
             ActionSelectionStrategy::Stochastic,
-        )))
+        ))
     } else if let Some(path) = args.ndarray {
-        Rc::new(RefCell::new(NdarrayController::load(&path)))
+        Box::new(NdarrayController::load(&path))
     } else {
-        Rc::new(RefCell::new(KeyboardController::default()))
+        Box::new(KeyboardController::default())
     }
 }
 

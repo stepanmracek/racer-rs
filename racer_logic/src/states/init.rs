@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::{
     controller::Controller,
     environment::Environment,
@@ -10,15 +8,15 @@ use macroquad::prelude::*;
 
 pub struct Init {
     follow_camera: FollowCamera,
-    controller: Rc<RefCell<dyn Controller>>,
+    controller: Option<Box<dyn Controller>>,
 }
 
 impl Init {
-    pub fn new(environment: &Environment, controller: Rc<RefCell<dyn Controller>>) -> Self {
+    pub fn new(environment: &Environment, controller: Box<dyn Controller>) -> Self {
         let follow_camera = FollowCamera::new(&environment.car);
         Self {
             follow_camera,
-            controller,
+            controller: Some(controller),
         }
     }
 }
@@ -28,7 +26,7 @@ impl State for Init {
         if is_key_pressed(KeyCode::Space) {
             Some(Box::new(Game::new(
                 &self.follow_camera,
-                self.controller.clone(),
+                self.controller.take().unwrap(),
             )))
         } else {
             None
