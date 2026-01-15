@@ -9,3 +9,4 @@ macroquad = "0.4.14"
 racer_logic = { path = "../racer_logic" }
 racer_onnx_controller = { path = "../racer_onnx_controller" }
 racer_ndarray_controller = { path = "../racer_ndarray_controller" }
+clap = { version = "4.5.54", features = ["derive"] }
