@@ -952,8 +952,10 @@ dependencies = [
 name = "racer_headless"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "kdam",
  "racer_logic",
+ "racer_ndarray_controller",
  "racer_onnx_controller",
 ]
 

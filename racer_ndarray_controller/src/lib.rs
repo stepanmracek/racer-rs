@@ -78,6 +78,8 @@ impl Controller for NdarrayController {
             throttle: output[[1, 0]],
         }
     }
+
+    fn reset(&mut self) {}
 }
 
 #[cfg(test)]

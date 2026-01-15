@@ -16,4 +16,6 @@ impl Controller for KeyboardController {
 
         Action { steer, throttle }
     }
+
+    fn reset(&mut self) {}
 }

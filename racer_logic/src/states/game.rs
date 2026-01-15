@@ -7,25 +7,23 @@ use crate::{
     utils::format_time,
 };
 use macroquad::prelude::*;
-use std::iter::zip;
+use std::{cell::RefCell, iter::zip, rc::Rc};
 
 pub struct Game {
     follow_camera: FollowCamera,
     state_started: f64,
-    controller: Box<dyn Controller>,
+    controller: Rc<RefCell<dyn Controller>>,
     reward: f32,
 }
 
 impl Game {
-    pub fn new(
-        follow_camera: &FollowCamera,
-        controller_factory: fn() -> Box<dyn Controller>,
-    ) -> Self {
+    pub fn new(follow_camera: &FollowCamera, controller: Rc<RefCell<dyn Controller>>) -> Self {
         let follow_camera = follow_camera.clone();
+        controller.borrow_mut().reset();
         Self {
             follow_camera,
             state_started: get_time(),
-            controller: controller_factory(),
+            controller,
             reward: 0.0,
         }
     }
@@ -77,10 +75,10 @@ impl Game {
 
 impl State for Game {
     fn step(&mut self, environment: &mut Environment) -> Option<Box<dyn State>> {
-        //let mut vec: Vec<f32> = environment.observation.clone().into();
-        let action = self.controller.control(&environment.observation);
-        //vec.extend([action.steer, action.throttle]);
-        //println!("{vec:?}");
+        let action = self
+            .controller
+            .borrow_mut()
+            .control(&environment.observation);
 
         let outcome = environment.step(&action, false);
         self.reward += outcome.reward;

@@ -85,4 +85,6 @@ impl Controller for OnnxController {
             ActionSelectionStrategy::Stochastic => self.sample_action(&probs),
         }
     }
+
+    fn reset(&mut self) {}
 }

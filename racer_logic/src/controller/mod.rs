@@ -4,4 +4,5 @@ pub use keyboard::KeyboardController;
 
 pub trait Controller {
     fn control(&mut self, observation: &Observation) -> Action;
+    fn reset(&mut self);
 }

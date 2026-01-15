@@ -43,7 +43,7 @@ impl Environment {
         (observation, outcome.reward, outcome.terminated)
     }
 
-    fn observation(&self) -> Vec<f32> {eprintln!("Finished episodes: {finish_count}");
+    fn observation(&self) -> Vec<f32> {
         self.env.observation.clone().into()
     }
 
