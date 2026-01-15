@@ -1,16 +1,17 @@
+import argparse
 from collections import deque
 from itertools import count
-from torch.distributions import Categorical
-from tqdm import tqdm
 from typing import cast
-import argparse
-import racer_gym
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+from torch.distributions import Categorical
+from tqdm import tqdm
 from utils import create_scale_layer, policy_output_to_action
+
+import racer_gym
 
 
 class Policy(nn.Module):
@@ -61,7 +62,11 @@ class Policy(nn.Module):
         optimizer.load_state_dict(state["optimizer"])
 
 
-def finish_batch(optimizer: optim.Optimizer, batch_rewards: list[list[float]], batch_log_probs: list[list[torch.Tensor]]):
+def finish_batch(
+    optimizer: optim.Optimizer,
+    batch_rewards: list[list[float]],
+    batch_log_probs: list[list[torch.Tensor]],
+):
     policy_loss = torch.scalar_tensor(0.0)
     all_returns = []
 
@@ -81,7 +86,7 @@ def finish_batch(optimizer: optim.Optimizer, batch_rewards: list[list[float]], b
     # Calculate policy loss for all trajectories in the batch
     return_idx = 0
     for log_probs in batch_log_probs:
-        episode_returns = all_returns[return_idx:return_idx + len(log_probs)]
+        episode_returns = all_returns[return_idx : return_idx + len(log_probs)]
         for log_prob, R in zip(log_probs, episode_returns):
             policy_loss += -log_prob * R
         return_idx += len(log_probs)
@@ -109,7 +114,11 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
 
         for trajectory in range(trajectories):
             total_reward = 0
-            env = racer_gym.Environment(seed=episode * trajectory, off_track_prob=args.off_track_prob, goal=racer_gym.Goal.ReachFinish)
+            env = racer_gym.Environment(
+                seed=episode * trajectory,
+                off_track_prob=args.off_track_prob,
+                goal=racer_gym.Goal.ReachFinish,
+            )
             observation = env.observation()
             rewards = []
             log_probs = []
@@ -132,8 +141,12 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
 
         if batch_rewards and batch_log_probs:
             finish_batch(optimizer, batch_rewards, batch_log_probs)
-            print(f"{episode},{total_trajectories_reward/len(batch_rewards):.2f},{running_reward:.2f}")
-            episodes.set_postfix_str(f"Running reward: {running_reward:.2f}", refresh=False)
+            print(
+                f"{episode},{total_trajectories_reward / len(batch_rewards):.2f},{running_reward:.2f}"
+            )
+            episodes.set_postfix_str(
+                f"Running reward: {running_reward:.2f}", refresh=False
+            )
 
         if episode % args.snapshot_interval_episodes == 0:
             policy.save(f"{args.snapshot_prefix}{episode:05}.pth", optimizer)
@@ -151,9 +164,15 @@ def main():
     train_parser = sub_parsers.add_parser("train")
     train_parser.add_argument("--init-state", type=str, required=False)
     train_parser.add_argument("--episode-start", type=int, required=False, default=1)
-    train_parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
-    train_parser.add_argument("--snapshot-prefix", type=str, required=False, default="policy-reinforce/ep")
-    train_parser.add_argument("--off-track-prob", type=float, required=False, default=0.5)
+    train_parser.add_argument(
+        "--snapshot-interval-episodes", type=int, required=False, default=100
+    )
+    train_parser.add_argument(
+        "--snapshot-prefix", type=str, required=False, default="policy-reinforce/ep"
+    )
+    train_parser.add_argument(
+        "--off-track-prob", type=float, required=False, default=0.5
+    )
     train_parser.add_argument("--trajectories", type=int, required=False, default=4)
 
     export_parser = sub_parsers.add_parser("export")
