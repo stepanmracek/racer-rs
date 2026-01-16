@@ -8,5 +8,5 @@ kdam = "0.6.3"
 ndarray = { version = "0.17.1", features = ["serde"] }
 ndarray-rand = "0.16.0"
 racer_logic = { path = "../racer_logic" }
-racer_ndarray_controller = { path = "../racer_ndarray_controller" }
+racer_ndarray_controller = { path = "../controllers/ndarray" }
 rand = "0.9.2"

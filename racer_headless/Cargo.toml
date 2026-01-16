@@ -7,5 +7,5 @@ edition = "2024"
 clap = { version = "4.5.54", features = ["derive"] }
 kdam = "0.6.3"
 racer_logic = { path = "../racer_logic" }
-racer_onnx_controller = { path = "../racer_onnx_controller" }
-racer_ndarray_controller = { path = "../racer_ndarray_controller" }
+racer_onnx_controller = { path = "../controllers/onnx" }
+racer_ndarray_controller = { path = "../controllers/ndarray" }

@@ -5,7 +5,7 @@ members = [
     "racer_gym",
     "racer_headless",
     "racer_logic",
-    "racer_ndarray_controller",
-    "racer_onnx_controller",
+    "controllers/ndarray",
+    "controllers/onnx",
     "train_ndarray_controller",
 ]

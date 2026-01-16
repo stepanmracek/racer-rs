@@ -7,6 +7,6 @@ default-run = "racer"
 [dependencies]
 macroquad = "0.4.14"
 racer_logic = { path = "../racer_logic" }
-racer_onnx_controller = { path = "../racer_onnx_controller" }
-racer_ndarray_controller = { path = "../racer_ndarray_controller" }
+racer_onnx_controller = { path = "../controllers/onnx" }
+racer_ndarray_controller = { path = "../controllers/ndarray" }
 clap = { version = "4.5.54", features = ["derive"] }
