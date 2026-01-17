@@ -52,10 +52,7 @@ impl OnnxController {
 
     fn index_to_action(&self, index: usize) -> Action {
         let action = self.output_to_action[&index];
-        Action {
-            steer: action.0,
-            throttle: action.1,
-        }
+        Action::new(action.0, action.1)
     }
 
     fn sample_action(&self, probs: &[f32]) -> Action {

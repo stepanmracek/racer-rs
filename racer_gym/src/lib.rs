@@ -36,7 +36,7 @@ impl Environment {
     }
 
     pub fn step(&mut self, steer: f32, throttle: f32) -> (Vec<f32>, f32, bool) {
-        let action = racer_logic::environment::Action { steer, throttle };
+        let action = racer_logic::environment::Action::new(steer, throttle);
         let outcome = self.env.step(&action, true);
 
         let observation: Vec<f32> = self.env.observation.clone().into();

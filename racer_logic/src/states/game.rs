@@ -41,26 +41,21 @@ impl Game {
     }
 
     fn draw_observation(observation: &Observation, _car: &Car, reward: f32) {
-        for (d, (start, end)) in zip(&observation.sensors.distances, &observation.sensors.rays) {
+        for (i, (d, (start, end))) in
+            zip(&observation.sensors.distances, &observation.sensors.rays).enumerate()
+        {
             draw_line(start.x, start.y, end.x, end.y, 0.3, GREEN.with_alpha(0.2));
             if let Some(d) = d {
                 let p = (*end - *start).normalize() * *d + *start;
-                draw_circle(p.x, p.y, 1.0, RED);
+
+                if i == 6 {
+                    draw_circle(p.x, p.y, 2.0, RED);
+                } else {
+                    draw_circle(p.x, p.y, 1.0, RED);
+                }
             }
         }
 
-        /*let to_waypoint = Vec2::from_angle(*car.rotation()).rotate(
-            Vec2::from_angle(observation.next_waypoint.angle) * observation.next_waypoint.distance,
-        );
-        let car_pos = car.windshield_position();
-        draw_line(
-            car_pos.x,
-            car_pos.y,
-            car_pos.x + to_waypoint.x,
-            car_pos.y + to_waypoint.y,
-            0.5,
-            GREEN.with_alpha(0.5),
-        );*/
         push_camera_state();
         set_default_camera();
         draw_multiline_text(
@@ -91,6 +86,7 @@ impl State for Game {
                 nearest_segment.start.dir.to_angle(),
                 0.0,
             );
+            self.controller.reset();
         }
 
         if outcome.terminated {

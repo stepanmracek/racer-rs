@@ -147,8 +147,17 @@ pub struct Observation {
 
 #[derive(Debug)]
 pub struct Action {
-    pub steer: f32,
-    pub throttle: f32,
+    steer: f32,
+    throttle: f32,
+}
+
+impl Action {
+    pub fn new(steer: f32, throttle: f32) -> Self {
+        Self {
+            steer: steer.clamp(-1.0, 1.0),
+            throttle: throttle.clamp(-1.0, 1.0),
+        }
+    }
 }
 
 #[derive(Debug)]

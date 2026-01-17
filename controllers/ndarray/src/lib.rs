@@ -73,10 +73,7 @@ impl Controller for NdarrayController {
         let input = vec_to_array2(o.clone().into());
         let output = self.forward(input);
 
-        Action {
-            steer: output[[0, 0]],
-            throttle: output[[1, 0]],
-        }
+        Action::new(output[[0, 0]], output[[1, 0]])
     }
 
     fn reset(&mut self) {}

@@ -938,6 +938,7 @@ dependencies = [
  "racer_logic",
  "racer_ndarray_controller",
  "racer_onnx_controller",
+ "racer_pid_controller",
 ]
 
 [[package]]
@@ -986,6 +987,13 @@ dependencies = [
  "ort",
  "racer_logic",
  "rand",
+]
+
+[[package]]
+name = "racer_pid_controller"
+version = "0.1.0"
+dependencies = [
+ "racer_logic",
 ]
 
 [[package]]

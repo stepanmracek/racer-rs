@@ -7,5 +7,6 @@ members = [
     "racer_logic",
     "controllers/ndarray",
     "controllers/onnx",
+    "controllers/pid",
     "train_ndarray_controller",
 ]

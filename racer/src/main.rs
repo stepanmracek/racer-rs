@@ -7,6 +7,7 @@ use racer_logic::{
 };
 use racer_ndarray_controller::NdarrayController;
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
+use racer_pid_controller::PidController;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -15,6 +16,9 @@ struct Args {
 
     #[arg(long, value_name = "NDARRAY_MODEL_PATH")]
     ndarray: Option<String>,
+
+    #[arg(long, value_name = "PID_MODEL")]
+    pid: bool,
 }
 
 fn window_conf() -> Conf {
@@ -37,6 +41,8 @@ fn controller() -> Box<dyn Controller> {
         ))
     } else if let Some(path) = args.ndarray {
         Box::new(NdarrayController::load(&path))
+    } else if args.pid {
+        Box::new(PidController::new())
     } else {
         Box::new(KeyboardController::default())
     }
