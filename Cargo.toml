@@ -8,5 +8,6 @@ members = [
     "controllers/ndarray",
     "controllers/onnx",
     "controllers/pid",
+    "ga",
     "train_ndarray_controller",
 ]

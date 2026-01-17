@@ -1,0 +1,10 @@
+[package]
+name = "ga"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+kdam = "0.6.3"
+rand = "0.9.2"
+serde = "1.0.228"
+serde_json = "1.0.149"
