@@ -2,38 +2,94 @@ use racer_logic::{
     controller::Controller,
     environment::{Action, Observation},
 };
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PidController {
     pid_steer: Pid,
     pid_throttle: Pid,
 }
 
 impl PidController {
-    pub fn new() -> Self {
+    pub fn load(path: &str) -> Self {
+        let json = std::fs::read_to_string(path).unwrap();
+        serde_json::from_str(&json).unwrap()
+    }
+
+    pub fn random() -> Self {
         Self {
-            pid_steer: Pid::new(0.8, 0.05, 0.2),
-            pid_throttle: Pid::new(0.5, 0.01, 0.3),
+            pid_steer: Pid::random(),
+            pid_throttle: Pid::random(),
+        }
+    }
+
+    pub fn cross(first: &PidController, second: &PidController, ratio: f32, mutation: f32) -> Self {
+        Self {
+            pid_steer: Pid::cross(&first.pid_steer, &second.pid_steer, ratio, mutation),
+            pid_throttle: Pid::cross(&first.pid_throttle, &second.pid_throttle, ratio, mutation),
         }
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 struct Pid {
     kp: f32,
     ki: f32,
     kd: f32,
+
+    #[serde(skip_serializing, default)]
     prev_error: f32,
+    #[serde(skip_serializing, default)]
     integral: f32,
 }
 
 impl Pid {
-    fn new(kp: f32, ki: f32, kd: f32) -> Self {
+    fn random() -> Self {
+        let mut rng = rand::rng();
         Self {
-            kp,
-            ki,
-            kd,
+            kp: rng.random_range(0.1..1.5),
+            ki: rng.random_range(0.001..0.5),
+            kd: rng.random_range(0.01..0.75),
             prev_error: 0.0,
             integral: 0.0,
         }
+    }
+
+    fn clamp(&mut self) {
+        self.kp = self.kp.clamp(0.1, 1.5);
+        self.ki = self.ki.clamp(0.001, 0.5);
+        self.kd = self.kd.clamp(0.01, 0.75);
+    }
+
+    fn cross(first: &Pid, second: &Pid, ratio: f32, mutation: f32) -> Self {
+        let mut rng = rand::rng();
+        let mut ans = Self {
+            kp: if rand::random::<f32>() < ratio {
+                first.kp
+            } else {
+                second.kp
+            },
+            ki: if rand::random::<f32>() < ratio {
+                first.ki
+            } else {
+                second.ki
+            },
+            kd: if rand::random::<f32>() < ratio {
+                first.kd
+            } else {
+                second.kd
+            },
+            prev_error: 0.0,
+            integral: 0.0,
+        };
+
+        ans.kp += rng.random_range(-0.2..0.2) * mutation;
+        ans.ki += rng.random_range(-0.01..0.01) * mutation;
+        ans.kd += rng.random_range(-0.1..0.1) * mutation;
+
+        ans.clamp();
+        ans
     }
 
     fn reset(&mut self) {
@@ -78,5 +134,6 @@ impl Controller for PidController {
 
     fn reset(&mut self) {
         self.pid_steer.reset();
+        self.pid_throttle.reset();
     }
 }

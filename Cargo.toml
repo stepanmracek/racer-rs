@@ -10,4 +10,5 @@ members = [
     "controllers/pid",
     "ga",
     "train_ndarray_controller",
+    "train_pid_controller",
 ]

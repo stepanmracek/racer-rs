@@ -1,0 +1,9 @@
+[package]
+name = "train_pid_controller"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+racer_logic = { path = "../racer_logic" }
+ga = { path = "../ga" }
+racer_pid_controller = { path = "../controllers/pid" }

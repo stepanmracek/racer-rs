@@ -7,8 +7,6 @@ use racer_logic::{
 };
 use racer_ndarray_controller::{Layer, NdarrayController};
 
-//mod ga;
-
 fn evaluate(controller: &mut NdarrayController, env_seed: u64) -> f32 {
     let mut env = Environment::new(Some(env_seed), 0.0, Box::new(ReachFinish::default()));
     let mut reward = 0.0;

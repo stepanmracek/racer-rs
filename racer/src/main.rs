@@ -18,7 +18,7 @@ struct Args {
     ndarray: Option<String>,
 
     #[arg(long, value_name = "PID_MODEL")]
-    pid: bool,
+    pid: Option<String>,
 }
 
 fn window_conf() -> Conf {
@@ -41,8 +41,8 @@ fn controller() -> Box<dyn Controller> {
         ))
     } else if let Some(path) = args.ndarray {
         Box::new(NdarrayController::load(&path))
-    } else if args.pid {
-        Box::new(PidController::new())
+    } else if let Some(path) = args.pid {
+        Box::new(PidController::load(&path))
     } else {
         Box::new(KeyboardController::default())
     }
