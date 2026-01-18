@@ -32,6 +32,10 @@ impl PidController {
     }
 }
 
+const KP_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
+const KI_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
+const KD_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
+
 #[derive(Serialize, Deserialize, Clone)]
 struct Pid {
     kp: f32,
@@ -48,47 +52,48 @@ impl Pid {
     fn random() -> Self {
         let mut rng = rand::rng();
         Self {
-            kp: rng.random_range(0.1..1.5),
-            ki: rng.random_range(0.001..0.5),
-            kd: rng.random_range(0.01..0.75),
+            kp: rng.random_range(KP_RANGE),
+            ki: rng.random_range(KI_RANGE),
+            kd: rng.random_range(KD_RANGE),
             prev_error: 0.0,
             integral: 0.0,
         }
     }
 
     fn clamp(&mut self) {
-        self.kp = self.kp.clamp(0.1, 1.5);
-        self.ki = self.ki.clamp(0.001, 0.5);
-        self.kd = self.kd.clamp(0.01, 0.75);
+        self.kp = self.kp.clamp(*KP_RANGE.start(), *KP_RANGE.end());
+        self.ki = self.ki.clamp(*KI_RANGE.start(), *KI_RANGE.end());
+        self.kd = self.kd.clamp(*KD_RANGE.start(), *KD_RANGE.end());
     }
 
     fn cross(first: &Pid, second: &Pid, ratio: f32, mutation: f32) -> Self {
         let mut rng = rand::rng();
+
+        let random_select = |first: f32, second: f32| {
+            if rand::random::<f32>() < ratio {
+                first
+            } else {
+                second
+            }
+        };
         let mut ans = Self {
-            kp: if rand::random::<f32>() < ratio {
-                first.kp
-            } else {
-                second.kp
-            },
-            ki: if rand::random::<f32>() < ratio {
-                first.ki
-            } else {
-                second.ki
-            },
-            kd: if rand::random::<f32>() < ratio {
-                first.kd
-            } else {
-                second.kd
-            },
+            kp: random_select(first.kp, second.kp),
+            ki: random_select(first.ki, second.ki),
+            kd: random_select(first.kd, second.kd),
             prev_error: 0.0,
             integral: 0.0,
         };
 
-        ans.kp += rng.random_range(-0.2..0.2) * mutation;
-        ans.ki += rng.random_range(-0.01..0.01) * mutation;
-        ans.kd += rng.random_range(-0.1..0.1) * mutation;
-
+        let mut mutate = |value: f32| {
+            let low = 1.0 - mutation / 2.0;
+            let high = 1.0 + mutation / 2.0;
+            value * rng.random_range(low..=high)
+        };
+        ans.kp = mutate(ans.kp);
+        ans.ki = mutate(ans.ki);
+        ans.kd = mutate(ans.kd);
         ans.clamp();
+
         ans
     }
 
