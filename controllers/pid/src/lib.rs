@@ -123,16 +123,17 @@ impl Controller for PidController {
         let sensor_reach = 205.0f32;
         let distances = o.sensors.distances[6..=12]
             .iter()
-            .map(|d| d.unwrap_or(sensor_reach))
+            .map(|d| (d.unwrap_or(sensor_reach) / 50.0).clamp(0.0, 1.0))
             .collect::<Vec<f32>>();
 
-        let right_space = distances[0..=2].iter().sum::<f32>();
-        let left_space = distances[4..=6].iter().sum::<f32>();
-        let steer_error = (left_space - right_space) / (1.0 * sensor_reach);
-        let steer = self.pid_steer.update(steer_error);
+        let right_space = distances[0..=1].iter().sum::<f32>() / 2.0;
+        let left_space = distances[5..=6].iter().sum::<f32>() / 2.0;
+        let error = (left_space - right_space) * 50.0;
+        let steer = self.pid_steer.update(error);
 
-        let velocity_error = distances[3] - o.velocity;
-        let throttle = self.pid_throttle.update(velocity_error);
+        let target_speed = (o.sensors.distances[9].unwrap_or(sensor_reach)).clamp(20.0, 150.0);
+        let error = target_speed - o.velocity;
+        let throttle = self.pid_throttle.update(error);
 
         Action::new(steer, throttle)
     }
