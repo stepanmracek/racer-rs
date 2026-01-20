@@ -9,3 +9,4 @@ ndarray-rand = "0.16.0"
 racer_logic = { path = "../racer_logic" }
 ga = { path = "../ga" }
 racer_ndarray_controller = { path = "../controllers/ndarray" }
+serde = { version = "1.0.228", features = ["derive"] }

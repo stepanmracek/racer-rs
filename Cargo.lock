@@ -1004,7 +1004,6 @@ name = "racer_pid_controller"
 version = "0.1.0"
 dependencies = [
  "racer_logic",
- "rand",
  "serde",
  "serde_json",
 ]
@@ -1317,6 +1316,7 @@ dependencies = [
  "ndarray-rand",
  "racer_logic",
  "racer_ndarray_controller",
+ "serde",
 ]
 
 [[package]]
@@ -1326,6 +1326,8 @@ dependencies = [
  "ga",
  "racer_logic",
  "racer_pid_controller",
+ "rand",
+ "serde",
 ]
 
 [[package]]

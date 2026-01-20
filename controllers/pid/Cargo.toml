@@ -6,5 +6,4 @@ edition = "2024"
 [dependencies]
 racer_logic = { path = "../../racer_logic" }
 serde = { version = "1.0.228", features = ["derive"] }
-rand = "0.9.2"
 serde_json = "1.0.148"

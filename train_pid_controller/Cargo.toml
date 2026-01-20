@@ -7,3 +7,5 @@ edition = "2024"
 racer_logic = { path = "../racer_logic" }
 ga = { path = "../ga" }
 racer_pid_controller = { path = "../controllers/pid" }
+rand = "0.9.2"
+serde = { version = "1.0.228", features = ["derive"] }
