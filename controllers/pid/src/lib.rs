@@ -23,7 +23,7 @@ impl PidController {
     }
 }
 
-impl Default for PidC ontroller {
+impl Default for PidController {
     fn default() -> Self {
         Self {
             steer: Pid::default(),
