@@ -9,3 +9,4 @@ kdam = "0.6.3"
 racer_logic = { path = "../racer_logic" }
 racer_onnx_controller = { path = "../controllers/onnx" }
 racer_ndarray_controller = { path = "../controllers/ndarray" }
+racer_pid_controller = { path = "../controllers/pid" }

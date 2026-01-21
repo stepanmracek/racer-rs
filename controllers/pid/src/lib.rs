@@ -5,19 +5,35 @@ use racer_logic::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct PidController {
     pub steer: Pid,
     pub throttle: Pid,
+    pub side_sensors_reach: f32,
+    pub side_sensors_coef: f32,
+    pub front_sensor_coef: f32,
+    pub min_speed: f32,
+    pub max_speed: f32,
 }
 
 impl PidController {
-    pub fn new(steer: Pid, throttle: Pid) -> Self {
-        Self { steer, throttle }
-    }
-
     pub fn load(path: &str) -> Self {
         let json = std::fs::read_to_string(path).unwrap();
         serde_json::from_str(&json).unwrap()
+    }
+}
+
+impl Default for PidC ontroller {
+    fn default() -> Self {
+        Self {
+            steer: Pid::default(),
+            throttle: Pid::default(),
+            side_sensors_reach: 50.0,
+            side_sensors_coef: 50.0,
+            front_sensor_coef: 1.0,
+            min_speed: 75.0,
+            max_speed: 150.0,
+        }
     }
 }
 
@@ -65,20 +81,42 @@ impl Pid {
     }
 }
 
+impl Default for Pid {
+    fn default() -> Self {
+        Self {
+            kp: 1.0,
+            ki: 0.0,
+            kd: 0.0,
+            prev_error: 0.0,
+            integral: 0.0,
+        }
+    }
+}
+
 impl Controller for PidController {
     fn control(&mut self, o: &Observation) -> Action {
         let sensor_reach = 205.0f32;
         let distances = o.sensors.distances[6..=12]
             .iter()
-            .map(|d| (d.unwrap_or(sensor_reach) / 50.0).clamp(0.0, 1.0))
+            .map(|d| (d.unwrap_or(sensor_reach) / self.side_sensors_reach).clamp(0.0, 1.0))
             .collect::<Vec<f32>>();
 
-        let right_space = distances[0..=1].iter().sum::<f32>() / 2.0;
-        let left_space = distances[5..=6].iter().sum::<f32>() / 2.0;
-        let error = (left_space - right_space) * 50.0;
+        let right_space = if !o.wheels_on_track[0] || !o.wheels_on_track[2] {
+            0.0
+        } else {
+            distances[0..=1].iter().sum::<f32>() / 2.0
+        };
+        let left_space = if !o.wheels_on_track[1] || !o.wheels_on_track[3] {
+            0.0
+        } else {
+            distances[5..=6].iter().sum::<f32>() / 2.0
+        };
+        let error = (left_space - right_space) * self.side_sensors_coef;
         let steer = self.steer.update(error);
 
-        let target_speed = (o.sensors.distances[9].unwrap_or(sensor_reach)).clamp(20.0, 150.0);
+        let target_speed = (o.sensors.distances[9].unwrap_or(sensor_reach)
+            * self.front_sensor_coef)
+            .clamp(self.min_speed, self.max_speed);
         let error = target_speed - o.velocity;
         let throttle = self.throttle.update(error);
 

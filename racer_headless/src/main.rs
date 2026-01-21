@@ -6,6 +6,7 @@ use racer_logic::{
 };
 use racer_ndarray_controller::NdarrayController;
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
+use racer_pid_controller::PidController;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -14,6 +15,9 @@ struct Args {
 
     #[arg(long, value_name = "NDARRAY_MODEL_PATH")]
     ndarray: Option<String>,
+
+    #[arg(long, value_name = "PID_MODEL")]
+    pid: Option<String>,
 }
 
 fn controller() -> Box<dyn Controller> {
@@ -26,6 +30,8 @@ fn controller() -> Box<dyn Controller> {
         ))
     } else if let Some(path) = args.ndarray {
         Box::new(NdarrayController::load(&path))
+    } else if let Some(path) = args.pid {
+        Box::new(PidController::load(&path))
     } else {
         panic!("No controller selected")
     }
@@ -38,7 +44,7 @@ fn main() {
     let mut fail_count = 0;
     for i in tqdm!(0..1_000) {
         let mut env = Environment::new(Some(i), 0.0, Box::new(ReachFinish::default()));
-        for _ in 0..120 * 60 {
+        for _ in 0..100 * 60 {
             let action = controller.control(&env.observation);
             let output = env.step(&action, true);
             if output.terminated {
@@ -51,6 +57,7 @@ fn main() {
             }
         }
     }
-    eprintln!("Wins: {finish_count}");
-    eprintln!("Losses: {fail_count}");
+    eprintln!("Finish: {finish_count}");
+    eprintln!("Fails: {fail_count}");
+    eprintln!("No finish: {}", 1000 - (finish_count + fail_count));
 }
