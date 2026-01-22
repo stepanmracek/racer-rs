@@ -44,6 +44,7 @@ fn main() {
     let mut fail_count = 0;
     for i in tqdm!(0..1_000) {
         let mut env = Environment::new(Some(i), 0.0, Box::new(ReachFinish::default()));
+        controller.reset();
         for _ in 0..100 * 60 {
             let action = controller.control(&env.observation);
             let output = env.step(&action, true);
