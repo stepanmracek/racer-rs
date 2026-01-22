@@ -71,7 +71,11 @@ impl Car {
 
     #[inline]
     fn max_steer(&self) -> f32 {
-        FRAC_PI_6 * (1.0 - (self.velocity.abs() / 170.0).powi(2))
+        let velocity = self.velocity.abs();
+        if velocity > 170.0 {
+            return 0.0;
+        }
+        FRAC_PI_6 * (1.0 - (velocity / 170.0).powi(2))
     }
 
     #[inline]
