@@ -1,1 +1,10 @@
-{"steer":{"kp":3.093149,"ki":0.12648624,"kd":4.4386206},"throttle":{"kp":5.0,"ki":0.030147478,"kd":2.2962673},"side_sensors_reach":69.888374,"side_sensors_coef":81.70333,"front_sensor_coef":11.002594,"min_speed":31.310345,"max_speed":100.0}
+{
+  "steer": { "kp": 1.9336905, "ki": 0.13327326, "kd": 3.3886871 },
+  "throttle": { "kp": 4.357216, "ki": 0.23853393, "kd": 2.965678 },
+  "side_sensors_reach": 72.02717,
+  "side_sensors_exp": 1.0966002,
+  "side_sensors_coef": 34.1149,
+  "front_sensor_exp": 1.303714,
+  "min_speed": 64.11387,
+  "max_speed": 193.9931
+}

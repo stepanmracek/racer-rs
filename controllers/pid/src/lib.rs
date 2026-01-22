@@ -1,6 +1,6 @@
 use racer_logic::{
     controller::Controller,
-    environment::{Action, Observation},
+    environment::{Action, Observation, SENSOR_REACH},
 };
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +10,9 @@ pub struct PidController {
     pub steer: Pid,
     pub throttle: Pid,
     pub side_sensors_reach: f32,
+    pub side_sensors_exp: f32,
     pub side_sensors_coef: f32,
-    pub front_sensor_coef: f32,
+    pub front_sensor_exp: f32,
     pub min_speed: f32,
     pub max_speed: f32,
 }
@@ -29,10 +30,11 @@ impl Default for PidController {
             steer: Pid::default(),
             throttle: Pid::default(),
             side_sensors_reach: 50.0,
+            side_sensors_exp: 1.0,
             side_sensors_coef: 50.0,
-            front_sensor_coef: 1.0,
-            min_speed: 75.0,
-            max_speed: 150.0,
+            front_sensor_exp: 1.0,
+            min_speed: 30.0,
+            max_speed: 170.0,
         }
     }
 }
@@ -95,10 +97,13 @@ impl Default for Pid {
 
 impl Controller for PidController {
     fn control(&mut self, o: &Observation) -> Action {
-        let sensor_reach = 205.0f32;
         let distances = o.sensors.distances[6..=12]
             .iter()
-            .map(|d| (d.unwrap_or(sensor_reach) / self.side_sensors_reach).clamp(0.0, 1.0))
+            .map(|d| {
+                (d.unwrap_or(SENSOR_REACH) / self.side_sensors_reach)
+                    .clamp(0.0, 1.0)
+                    .powf(self.side_sensors_exp)
+            })
             .collect::<Vec<f32>>();
 
         let right_space = if !o.wheels_on_track[0] || !o.wheels_on_track[2] {
@@ -114,9 +119,9 @@ impl Controller for PidController {
         let error = (left_space - right_space) * self.side_sensors_coef;
         let steer = self.steer.update(error);
 
-        let target_speed = (o.sensors.distances[9].unwrap_or(sensor_reach)
-            * self.front_sensor_coef)
-            .clamp(self.min_speed, self.max_speed);
+        let front_sensor = (o.sensors.distances[9].unwrap_or(SENSOR_REACH) / SENSOR_REACH)
+            .powf(self.front_sensor_exp);
+        let target_speed = self.min_speed + front_sensor * (self.max_speed - self.min_speed);
         let error = target_speed - o.velocity;
         let throttle = self.throttle.update(error);
 

@@ -6,21 +6,19 @@ use racer_pid_controller::{Pid, PidController};
 use rand::Rng;
 use serde::Serialize;
 
-const KP_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
-const KI_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
-const KD_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
-const SIDE_SENSORS_RANGE: std::ops::RangeInclusive<f32> = 10.0..=100.0;
-const SIDE_SENSORS_COEF: std::ops::RangeInclusive<f32> = 10.0..=100.0;
-const FRONT_SENSOR_COEF: std::ops::RangeInclusive<f32> = 0.5..=2.0;
+const PID_RANGE: std::ops::RangeInclusive<f32> = 0.001..=5.0;
+const SIDE_SENSORS_REACH_RANGE: std::ops::RangeInclusive<f32> = 10.0..=100.0;
+const SIDE_SENSORS_COEF_RANGE: std::ops::RangeInclusive<f32> = 10.0..=100.0;
+const EXP_RANGE: std::ops::RangeInclusive<f32> = 0.1..=10.0;
 const MIN_SPEED_RANGE: std::ops::RangeInclusive<f32> = 10.0..=75.0;
 const MAX_SPEED_RANGE: std::ops::RangeInclusive<f32> = 100.0..=200.0;
 
 fn random_pid() -> Pid {
     let mut rng = rand::rng();
     Pid::new(
-        rng.random_range(KP_RANGE),
-        rng.random_range(KI_RANGE),
-        rng.random_range(KD_RANGE),
+        rng.random_range(PID_RANGE),
+        rng.random_range(PID_RANGE),
+        rng.random_range(PID_RANGE),
     )
 }
 
@@ -29,9 +27,10 @@ pub fn random_ctrl() -> PidController {
     PidController {
         steer: random_pid(),
         throttle: random_pid(),
-        side_sensors_reach: rng.random_range(SIDE_SENSORS_RANGE),
-        side_sensors_coef: rng.random_range(SIDE_SENSORS_COEF),
-        front_sensor_coef: rng.random_range(FRONT_SENSOR_COEF),
+        side_sensors_reach: rng.random_range(SIDE_SENSORS_REACH_RANGE),
+        side_sensors_coef: rng.random_range(SIDE_SENSORS_COEF_RANGE),
+        side_sensors_exp: rng.random_range(EXP_RANGE),
+        front_sensor_exp: rng.random_range(EXP_RANGE),
         min_speed: rng.random_range(MIN_SPEED_RANGE),
         max_speed: rng.random_range(MAX_SPEED_RANGE),
     }
@@ -66,9 +65,9 @@ fn cross_pids(
     mutation: f32,
 ) -> Pid {
     Pid::new(
-        select_and_mutate(rng, first.kp, second.kp, ratio, KP_RANGE, mutation),
-        select_and_mutate(rng, first.ki, second.ki, ratio, KI_RANGE, mutation),
-        select_and_mutate(rng, first.kd, second.kd, ratio, KD_RANGE, mutation),
+        select_and_mutate(rng, first.kp, second.kp, ratio, PID_RANGE, mutation),
+        select_and_mutate(rng, first.ki, second.ki, ratio, PID_RANGE, mutation),
+        select_and_mutate(rng, first.kd, second.kd, ratio, PID_RANGE, mutation),
     )
 }
 
@@ -92,7 +91,7 @@ impl ga::Individual for Individual {
                 self.0.side_sensors_reach,
                 other.0.side_sensors_reach,
                 ratio,
-                SIDE_SENSORS_RANGE,
+                SIDE_SENSORS_REACH_RANGE,
                 mutation,
             ),
             side_sensors_coef: select_and_mutate(
@@ -100,15 +99,23 @@ impl ga::Individual for Individual {
                 self.0.side_sensors_coef,
                 other.0.side_sensors_coef,
                 ratio,
-                SIDE_SENSORS_COEF,
+                SIDE_SENSORS_COEF_RANGE,
                 mutation,
             ),
-            front_sensor_coef: select_and_mutate(
+            side_sensors_exp: select_and_mutate(
                 &mut rng,
-                self.0.front_sensor_coef,
-                other.0.front_sensor_coef,
+                self.0.side_sensors_exp,
+                other.0.side_sensors_exp,
                 ratio,
-                SIDE_SENSORS_COEF,
+                EXP_RANGE,
+                mutation,
+            ),
+            front_sensor_exp: select_and_mutate(
+                &mut rng,
+                self.0.front_sensor_exp,
+                other.0.front_sensor_exp,
+                ratio,
+                EXP_RANGE,
                 mutation,
             ),
             min_speed: select_and_mutate(

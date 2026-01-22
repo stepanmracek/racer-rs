@@ -83,7 +83,7 @@ where
 
     if let Some(path) = save_best {
         let path = format!("{path}/{generation:05}.json");
-        let json = serde_json::to_string(&pop_with_rewards[0].0).unwrap();
+        let json = serde_json::to_string_pretty(&pop_with_rewards[0].0).unwrap();
         std::fs::write(path, json).unwrap();
     }
 
