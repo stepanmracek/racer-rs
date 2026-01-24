@@ -1,0 +1,18 @@
+{
+  "steer": {
+    "kp": 1.8810707,
+    "ki": 0.10092191,
+    "kd": 4.7131467
+  },
+  "throttle": {
+    "kp": 4.215927,
+    "ki": 0.10913498,
+    "kd": 1.8574415
+  },
+  "side_sensors_reach": 82.93485,
+  "side_sensors_exp": 0.87672997,
+  "side_sensors_coef": 16.6356,
+  "front_sensor_exp": 0.77923495,
+  "min_speed": 51.96914,
+  "max_speed": 171.63911
+}
