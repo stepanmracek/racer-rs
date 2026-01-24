@@ -166,15 +166,16 @@ impl Car {
         }
 
         if let Some(texture) = &self.texture {
-            let texture_pos = (self.position + rot_vec * self.wheel_base / 2.0)
-                - vec2(texture.width() / 40.0, texture.height() / 40.0);
+            let texture_size = vec2(11.0, 25.0);
+            let texture_pos =
+                (self.position + rot_vec * self.wheel_base / 2.0) - texture_size / 2.0;
             draw_texture_ex(
                 texture,
                 texture_pos.x,
                 texture_pos.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(texture.size() / 20.0),
+                    dest_size: Some(texture_size),
                     flip_y: true,
                     rotation: draw_rot,
                     ..Default::default()
