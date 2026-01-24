@@ -9,10 +9,10 @@ pub struct FollowCamera {
 
 impl FollowCamera {
     pub fn new(car: &Car) -> Self {
-        let zoom = 8.0;
+        let zoom = 0.01;
         let camera_2d = Camera2D {
             target: *car.position(),
-            zoom: vec2(zoom / screen_width(), -zoom / screen_height()),
+            zoom: vec2(zoom * (screen_height() / screen_width()), -zoom),
             rotation: -car.rotation().to_degrees() + 90.0,
             ..Default::default()
         };
@@ -25,7 +25,7 @@ impl FollowCamera {
         let dt = get_frame_time();
         self.camera_2d.rotation = self.camera_2d.rotation.lerp(-car_rotation.to_degrees(), dt);
         self.camera_2d.target = self.camera_2d.target.lerp(target, 5.0 * dt);
-        self.camera_2d.zoom = vec2(self.zoom / screen_width(), -self.zoom / screen_height());
+        self.camera_2d.zoom = vec2(self.zoom * (screen_height() / screen_width()), -self.zoom);
         set_camera(&self.camera_2d);
     }
 }
