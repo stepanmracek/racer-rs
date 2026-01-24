@@ -27,11 +27,11 @@ impl Environment {
     #[pyo3(signature = (seed=0, off_track_prob=0.0,  goal=Goal::ReachFinish))]
     pub fn new(seed: Option<u64>, off_track_prob: f32, goal: Goal) -> Self {
         Self {
-            env: racer_logic::environment::Environment::new(
-                seed,
-                off_track_prob,
-                goal.to_racer_goal(),
-            ),
+            env: racer_logic::environment::EnvironmentBuilder::default()
+                .with_seed(seed)
+                .with_off_track_prob(off_track_prob)
+                .with_goal(goal.to_racer_goal())
+                .build(),
         }
     }
 
@@ -49,8 +49,11 @@ impl Environment {
 
     #[pyo3(signature = (seed=0, off_track_prob=0.0, goal=Goal::ReachFinish))]
     pub fn reset(&mut self, seed: Option<u64>, off_track_prob: f32, goal: Goal) -> Vec<f32> {
-        self.env =
-            racer_logic::environment::Environment::new(seed, off_track_prob, goal.to_racer_goal());
+        self.env = racer_logic::environment::EnvironmentBuilder::default()
+            .with_seed(seed)
+            .with_off_track_prob(off_track_prob)
+            .with_goal(goal.to_racer_goal())
+            .build();
         self.observation()
     }
 }

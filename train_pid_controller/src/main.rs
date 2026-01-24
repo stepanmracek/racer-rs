@@ -1,7 +1,4 @@
-use racer_logic::{
-    controller::Controller,
-    environment::{Environment, ReachFinish},
-};
+use racer_logic::{controller::Controller, environment::EnvironmentBuilder};
 use racer_pid_controller::{Pid, PidController};
 use rand::Rng;
 use serde::Serialize;
@@ -141,11 +138,9 @@ impl ga::Individual for Individual {
         self.0.reset();
         let mut reward = 0.0;
         for t in 0..4 {
-            let mut env = Environment::new(
-                Some(env_seed + t * 100_000),
-                0.0,
-                Box::new(ReachFinish::default()),
-            );
+            let mut env = EnvironmentBuilder::default()
+                .with_seed(Some(env_seed + t * 100_000))
+                .build();
             for _ in 0..60 * 60 {
                 let action = self.0.control(&env.observation);
                 let output = env.step(&action, true);

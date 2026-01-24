@@ -1,10 +1,7 @@
 use ndarray::Array2;
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::Normal;
-use racer_logic::{
-    controller::Controller,
-    environment::{Environment, ReachFinish},
-};
+use racer_logic::{controller::Controller, environment::EnvironmentBuilder};
 use racer_ndarray_controller::{Layer, NdarrayController};
 use serde::Serialize;
 
@@ -28,7 +25,9 @@ impl ga::Individual for Individual {
     }
 
     fn evaluate(&mut self, env_seed: u64) -> f32 {
-        let mut env = Environment::new(Some(env_seed), 0.0, Box::new(ReachFinish::default()));
+        let mut env = EnvironmentBuilder::default()
+            .with_seed(Some(env_seed))
+            .build();
         let mut reward = 0.0;
         for _ in 0..60 * 60 {
             let action = self.0.control(&env.observation);

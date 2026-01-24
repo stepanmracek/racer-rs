@@ -20,6 +20,12 @@ pub struct Environment {
     goal: Box<dyn Goal>,
 }
 
+pub struct EnvironmentBuilder {
+    seed: Option<u64>,
+    off_track_prob: f32,
+    goal: Box<dyn Goal>,
+}
+
 pub trait Goal {
     fn outcome(&mut self, track: &Track, car: &Car, observation: &Observation) -> Outcome;
 }
@@ -187,6 +193,34 @@ impl From<Observation> for Vec<f32> {
                 .map(|r| r.unwrap_or(SENSOR_REACH)),
         );
         ans
+    }
+}
+
+impl Default for EnvironmentBuilder {
+    fn default() -> Self {
+        Self {
+            seed: None,
+            off_track_prob: 0.0,
+            goal: Box::new(ReachFinish::default()),
+        }
+    }
+}
+
+impl EnvironmentBuilder {
+    pub fn with_seed(mut self, seed: Option<u64>) -> Self {
+        self.seed = seed;
+        self
+    }
+    pub fn with_off_track_prob(mut self, off_track_prob: f32) -> Self {
+        self.off_track_prob = off_track_prob;
+        self
+    }
+    pub fn with_goal(mut self, goal: Box<dyn Goal>) -> Self {
+        self.goal = goal;
+        self
+    }
+    pub fn build(self) -> Environment {
+        Environment::new(self.seed, self.off_track_prob, self.goal)
     }
 }
 

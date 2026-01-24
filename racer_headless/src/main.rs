@@ -1,9 +1,6 @@
 use clap::Parser;
 use kdam::tqdm;
-use racer_logic::{
-    controller::Controller,
-    environment::{Environment, ReachFinish},
-};
+use racer_logic::{controller::Controller, environment::EnvironmentBuilder};
 use racer_ndarray_controller::NdarrayController;
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
 use racer_pid_controller::PidController;
@@ -43,7 +40,7 @@ fn main() {
     let mut finish_count = 0;
     let mut fail_count = 0;
     for i in tqdm!(0..1_000) {
-        let mut env = Environment::new(Some(i), 0.0, Box::new(ReachFinish::default()));
+        let mut env = EnvironmentBuilder::default().with_seed(Some(i)).build();
         controller.reset();
         for _ in 0..100 * 60 {
             let action = controller.control(&env.observation);
