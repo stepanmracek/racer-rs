@@ -59,7 +59,7 @@ impl Car {
     }
 
     pub async fn load_texture(&mut self) {
-        self.texture = Some(load_texture("assets/car.png").await.unwrap());
+        self.texture = Some(load_texture("assets/car1.png").await.unwrap());
     }
 
     pub fn reset(&mut self, position: &Vec2, rotation: f32, velocity: f32) {
