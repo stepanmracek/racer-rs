@@ -140,7 +140,8 @@ impl ga::Individual for Individual {
         for t in 0..4 {
             let mut env = EnvironmentBuilder::default()
                 .with_seed(Some(env_seed + t * 100_000))
-                .build(1);
+                .build(1)
+                .unwrap();
             for _ in 0..60 * 60 {
                 let action = self.0.control(&env.observations[0]);
                 let output = env.step(&[action], true);

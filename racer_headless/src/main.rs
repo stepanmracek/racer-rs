@@ -40,7 +40,10 @@ fn main() {
     let mut finish_count = 0;
     let mut fail_count = 0;
     for i in tqdm!(0..1_000) {
-        let mut env = EnvironmentBuilder::default().with_seed(Some(i)).build(1);
+        let mut env = EnvironmentBuilder::default()
+            .with_seed(Some(i))
+            .build(1)
+            .unwrap();
         controller.reset();
         for _ in 0..100 * 60 {
             let action = controller.control(&env.observations[0]);

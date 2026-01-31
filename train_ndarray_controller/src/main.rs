@@ -27,7 +27,8 @@ impl ga::Individual for Individual {
     fn evaluate(&mut self, env_seed: u64) -> f32 {
         let mut env = EnvironmentBuilder::default()
             .with_seed(Some(env_seed))
-            .build(1);
+            .build(1)
+            .unwrap();
         let mut reward = 0.0;
         for _ in 0..60 * 60 {
             let action = self.0.control(&env.observations[0]);

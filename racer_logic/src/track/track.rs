@@ -172,7 +172,7 @@ impl Default for Track {
     }
 }
 
-pub fn sensor_readings(
+pub fn distances_to_segments(
     nearest_segments: &[Rc<Segment>],
     sensor_rays: &[(Vec2, Vec2)],
 ) -> Vec<Option<f32>> {

@@ -1,5 +1,7 @@
 use macroquad::prelude::*;
 
+use crate::physics::RotRect;
+
 pub fn point_in_angle(point: Vec2, center: Vec2, start: Vec2, end: Vec2) -> bool {
     let to_pos = point - center;
     let to_start = start - center;
@@ -67,4 +69,24 @@ pub fn segment_vs_segment(first: &(Vec2, Vec2), second: &(Vec2, Vec2)) -> Option
     } else {
         None
     }
+}
+
+pub fn segment_vs_rotrect(segment: &(Vec2, Vec2), rotrect: &RotRect) -> Option<Vec2> {
+    let corners = rotrect.corners();
+
+    let rect_segments = [
+        (corners[0], corners[1]),
+        (corners[1], corners[2]),
+        (corners[2], corners[3]),
+        (corners[3], corners[0]),
+    ];
+
+    rect_segments
+        .iter()
+        .filter_map(|other| segment_vs_segment(segment, other))
+        .min_by(|a, b| {
+            let dist_a = (*a - segment.0).length_squared();
+            let dist_b = (*b - segment.0).length_squared();
+            dist_a.total_cmp(&dist_b)
+        })
 }

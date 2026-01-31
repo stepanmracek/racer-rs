@@ -2,7 +2,8 @@ use crate::{
     car::Car,
     follow_camera::FollowCamera,
     goal::{Goal, ReachFinish},
-    track::{TRACK_WIDTH, Track, sensor_readings},
+    physics::segment_vs_rotrect,
+    track::{TRACK_WIDTH, Track, distances_to_segments},
 };
 use macroquad::prelude::*;
 use std::{
@@ -116,8 +117,16 @@ impl EnvironmentBuilder {
         self.goal = goal;
         self
     }
-    pub fn build(self, cars_count: usize) -> Environment {
-        Environment::new(self.seed, self.off_track_prob, self.goal, cars_count)
+    pub fn build(self, cars_count: usize) -> Result<Environment, String> {
+        if cars_count == 0 {
+            return Err("At least one car is required!".into());
+        }
+        Ok(Environment::new(
+            self.seed,
+            self.off_track_prob,
+            self.goal,
+            cars_count,
+        ))
     }
 }
 
@@ -157,7 +166,14 @@ impl Environment {
             std::iter::once(0)
                 .chain((1..).flat_map(|n| [n * 16, -n * 16]))
                 .take(cars_count)
-                .map(|x| Car::new(x as f32, 15.0))
+                .map(|x| {
+                    let dx = if cars_count.is_multiple_of(2) {
+                        -8.0
+                    } else {
+                        0.0
+                    };
+                    Car::new(x as f32 + dx, 15.0)
+                })
                 .collect::<Vec<_>>()
         };
 
@@ -171,15 +187,60 @@ impl Environment {
         }
     }
 
-    fn sensor_readings(car: &Car, track: &Track) -> SensorReadings {
-        let x = car.windshield_position();
-        let nearest_segments = track.nearest_segments(x, 10);
-        let rays = car.sensor_rays(SENSOR_REACH);
-        let distances = sensor_readings(&nearest_segments, &rays);
-        SensorReadings { rays, distances }
+    fn ray_vs_cars(car_index: usize, ray: &(Vec2, Vec2), cars: &[Car]) -> Option<f32> {
+        cars.iter()
+            .enumerate()
+            .filter_map(|(other_index, other_car)| {
+                if other_index == car_index {
+                    None
+                } else {
+                    segment_vs_rotrect(ray, other_car.bbox())
+                }
+            })
+            .min_by(|a, b| {
+                let dist_a = (*a - ray.0).length_squared();
+                let dist_b = (*b - ray.0).length_squared();
+                dist_a.total_cmp(&dist_b)
+            })
+            .map(|intersection| (intersection - ray.0).length())
     }
 
-    fn observe(car: &Car, track: &Track) -> Observation {
+    fn rays_vs_cars(car_index: usize, rays: &[(Vec2, Vec2)], cars: &[Car]) -> Vec<Option<f32>> {
+        rays.iter()
+            .map(|ray| Environment::ray_vs_cars(car_index, ray, cars))
+            .collect()
+    }
+
+    fn merge(dist1: &[Option<f32>], dist2: &[Option<f32>]) -> Vec<Option<f32>> {
+        dist1
+            .iter()
+            .zip(dist2.iter())
+            .map(|(&d1, &d2)| match (d1, d2) {
+                (Some(val1), Some(val2)) => Some(val1.min(val2)),
+                (Some(val1), None) => Some(val1),
+                (None, Some(val2)) => Some(val2),
+                (None, None) => None,
+            })
+            .collect()
+    }
+
+    fn sensor_readings(car_index: usize, cars: &[Car], track: &Track) -> SensorReadings {
+        let car = &cars[car_index];
+        let x = car.windshield_position();
+        let rays = car.sensor_rays(SENSOR_REACH);
+
+        let car_distances = Environment::rays_vs_cars(car_index, &rays, cars);
+
+        let nearest_segments = track.nearest_segments(x, 10);
+        let segment_distances = distances_to_segments(&nearest_segments, &rays);
+        SensorReadings {
+            rays,
+            distances: Environment::merge(&segment_distances, &car_distances),
+        }
+    }
+
+    fn observe(car_index: usize, cars: &[Car], track: &Track) -> Observation {
+        let car = &cars[car_index];
         let car_pos = car.windshield_position();
         let waypoint = &track.nearest_segments(car_pos, 1)[0].end;
 
@@ -193,7 +254,7 @@ impl Environment {
             velocity: car.velocity(),
             steering_angle: car.steering_angle(),
             wheels_on_track: car.wheels_on_track(track),
-            sensors: Environment::sensor_readings(car, track),
+            sensors: Environment::sensor_readings(car_index, cars, track),
             next_waypoint: NextWaypoint {
                 angle,
                 distance,
@@ -203,8 +264,8 @@ impl Environment {
     }
 
     fn observe_all(cars: &[Car], track: &Track) -> Vec<Observation> {
-        cars.iter()
-            .map(|car| Environment::observe(car, track))
+        (0..cars.len())
+            .map(|car_index| Environment::observe(car_index, cars, track))
             .collect()
     }
 

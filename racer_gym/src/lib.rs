@@ -31,7 +31,8 @@ impl Environment {
                 .with_seed(seed)
                 .with_off_track_prob(off_track_prob)
                 .with_goal(goal.to_racer_goal())
-                .build(1),
+                .build(1)
+                .unwrap(),
         }
     }
 
@@ -53,7 +54,8 @@ impl Environment {
             .with_seed(seed)
             .with_off_track_prob(off_track_prob)
             .with_goal(goal.to_racer_goal())
-            .build(1);
+            .build(1)
+            .unwrap();
         self.observation()
     }
 }

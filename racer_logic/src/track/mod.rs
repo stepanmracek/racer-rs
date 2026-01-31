@@ -5,4 +5,4 @@ mod shape;
 mod track;
 
 pub use constant::TRACK_WIDTH;
-pub use track::{Track, sensor_readings};
+pub use track::{Track, distances_to_segments};
