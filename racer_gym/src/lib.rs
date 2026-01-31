@@ -13,10 +13,10 @@ enum Goal {
 }
 
 impl Goal {
-    fn to_racer_goal(&self) -> Box<dyn racer_logic::environment::Goal> {
+    fn to_racer_goal(&self) -> Box<dyn racer_logic::goal::Goal> {
         match self {
-            Goal::ReachFinish => Box::new(racer_logic::environment::ReachFinish::default()),
-            Goal::BackToTrack => Box::new(racer_logic::environment::BackToTrack::default()),
+            Goal::ReachFinish => Box::new(racer_logic::goal::ReachFinish::default()),
+            Goal::BackToTrack => Box::new(racer_logic::goal::BackToTrack::default()),
         }
     }
 }
