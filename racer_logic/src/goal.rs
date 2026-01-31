@@ -56,7 +56,7 @@ impl Goal for ReachFinish {
         }
 
         // end simulation if reached finish or out of track for too long (5 seconds @ 60 fps)
-        let truncated = false; //self.out_of_track_in_row > 300;
+        let truncated = self.out_of_track_in_row > 300;
         let terminated = finish_line || truncated;
 
         Outcome {
