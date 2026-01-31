@@ -8,15 +8,15 @@ use macroquad::prelude::*;
 
 pub struct Init {
     follow_camera: FollowCamera,
-    controller: Option<Box<dyn Controller>>,
+    controllers: Option<Vec<Box<dyn Controller>>>,
 }
 
 impl Init {
-    pub fn new(environment: &Environment, controller: Box<dyn Controller>) -> Self {
-        let follow_camera = FollowCamera::new(&environment.car);
+    pub fn new(environment: &Environment, controllers: Vec<Box<dyn Controller>>) -> Self {
+        let follow_camera = FollowCamera::new(&environment.cars[0]);
         Self {
             follow_camera,
-            controller: Some(controller),
+            controllers: Some(controllers),
         }
     }
 }
@@ -26,7 +26,7 @@ impl State for Init {
         if is_key_pressed(KeyCode::Space) {
             Some(Box::new(Game::new(
                 &self.follow_camera,
-                self.controller.take().unwrap(),
+                self.controllers.take().unwrap(),
             )))
         } else {
             None

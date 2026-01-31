@@ -2,7 +2,6 @@ use super::constant::*;
 use super::shape::*;
 use crate::physics::point_in_angle;
 use macroquad::prelude::*;
-use std::f32::consts::FRAC_PI_2;
 
 pub struct Segment {
     pub start: Waypoint,
@@ -37,7 +36,7 @@ impl Segment {
     pub fn draw(&self) {
         let track_color = Color::from_rgba(48, 48, 48, 255);
         match self.shape {
-            Shape::Straight(ref straight) => {
+            Shape::Straight(_) => {
                 for (d, color, thickness) in [
                     (0.0, track_color, TRACK_WIDTH),
                     (-TRACK_WIDTH / 2.0, WHITE, 1.0),
@@ -56,22 +55,6 @@ impl Segment {
                         thickness,
                         color,
                     );
-
-                    if straight.is_finish {
-                        let middle = self.start.pos.midpoint(self.end.pos);
-                        let orientation = self.end.pos - self.start.pos;
-                        draw_rectangle_ex(
-                            middle.x,
-                            middle.y,
-                            TRACK_WIDTH,
-                            20.0,
-                            DrawRectangleParams {
-                                offset: vec2(0.5, 0.5),
-                                rotation: orientation.to_angle() - FRAC_PI_2,
-                                color: WHITE,
-                            },
-                        );
-                    }
                 }
             }
             Shape::Turn(ref turn) => {

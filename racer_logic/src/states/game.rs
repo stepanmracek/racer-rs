@@ -12,21 +12,23 @@ use std::iter::zip;
 pub struct Game {
     follow_camera: FollowCamera,
     state_started: f64,
-    controller: Box<dyn Controller>,
+    controllers: Vec<Box<dyn Controller>>,
     reward: f32,
+    show_observation: bool,
 }
 
 impl Game {
-    pub fn new(follow_camera: &FollowCamera, controller: Box<dyn Controller>) -> Self {
+    pub fn new(follow_camera: &FollowCamera, controllers: Vec<Box<dyn Controller>>) -> Self {
         let follow_camera = follow_camera.clone();
         let mut game = Self {
             follow_camera,
             state_started: get_time(),
-            controller,
+            controllers,
             reward: 0.0,
+            show_observation: false,
         };
 
-        game.controller.reset();
+        game.controllers.iter_mut().for_each(|c| c.reset());
         game
     }
 
@@ -65,21 +67,26 @@ impl Game {
 
 impl State for Game {
     fn step(&mut self, environment: &mut Environment) -> Option<Box<dyn State>> {
-        let action = self.controller.control(&environment.observation);
+        let actions = std::iter::zip(self.controllers.iter_mut(), environment.observations.iter())
+            .map(|(controller, observation)| controller.control(observation))
+            .collect::<Vec<_>>();
 
-        let outcome = environment.step(&action, false);
+        let outcome = environment.step(&actions, false);
         self.reward += outcome.reward;
 
         if is_key_pressed(KeyCode::Space) {
             let nearest_segment = &environment
                 .track
-                .nearest_segments(environment.car.position(), 1)[0];
-            environment.car.reset(
-                &nearest_segment.start.pos,
+                .nearest_segments(environment.cars[0].position(), 1)[0];
+            environment.cars[0].reset(
+                nearest_segment.start.pos,
                 nearest_segment.start.dir.to_angle(),
                 0.0,
             );
-            self.controller.reset();
+            self.controllers[0].reset();
+        }
+        if is_key_pressed(KeyCode::O) {
+            self.show_observation = !self.show_observation;
         }
 
         if outcome.terminated {
@@ -94,7 +101,13 @@ impl State for Game {
 
     fn draw(&mut self, environment: &Environment) {
         environment.draw(&mut self.follow_camera);
-        Game::draw_observation(&environment.observation, &environment.car, self.reward);
+        if self.show_observation {
+            Game::draw_observation(
+                &environment.observations[0],
+                &environment.cars[0],
+                self.reward,
+            );
+        }
         self.draw_stopwatch();
     }
 }

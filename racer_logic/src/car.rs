@@ -18,6 +18,14 @@ pub struct Car {
     bbox: RotRect,
     skid_marks: std::collections::VecDeque<(Vec2, Vec2)>,
     skidding: bool,
+    impulse: Vec2,
+}
+
+pub struct Intention {
+    pub old_pos: Vec2,
+    pub old_rot: f32,
+    pub new_pos: Vec2,
+    pub new_bbox: RotRect,
 }
 
 impl Car {
@@ -40,12 +48,17 @@ impl Car {
             ],
             bbox: RotRect::new(
                 position + Vec2::from_angle(rotation) * wheel_base / 2.0,
-                vec2(10.0, 25.0),
+                vec2(10.0, 22.0),
                 0.0,
             ),
             skid_marks: VecDeque::new(),
             skidding: false,
+            impulse: Vec2::ZERO,
         }
+    }
+
+    pub fn impulse(&mut self, impulse: Vec2) {
+        self.impulse = impulse;
     }
 
     pub fn with_rotation(mut self, rotation: f32) -> Self {
@@ -58,15 +71,24 @@ impl Car {
         self
     }
 
-    pub async fn load_texture(&mut self) {
-        self.texture = Some(load_texture("assets/car1.png").await.unwrap());
+    pub async fn load_texture(&mut self, num: usize) {
+        let path = format!("assets/car{num}.png");
+        self.texture = Some(load_texture(&path).await.unwrap());
     }
 
-    pub fn reset(&mut self, position: &Vec2, rotation: f32, velocity: f32) {
-        self.position = *position;
+    fn update_bbox(&mut self) {
+        self.bbox.update(
+            self.position_with_offset(self.wheel_base / 2.0),
+            self.rotation - FRAC_PI_2,
+        );
+    }
+
+    pub fn reset(&mut self, position: Vec2, rotation: f32, velocity: f32) {
+        self.position = position;
         self.rotation = rotation;
         self.velocity = velocity;
-        self.steering_angle = 0.0
+        self.steering_angle = 0.0;
+        self.update_bbox();
     }
 
     #[inline]
@@ -78,19 +100,13 @@ impl Car {
         FRAC_PI_6 * (1.0 - (velocity / 170.0).powi(2))
     }
 
-    #[inline]
-    fn dt(fixed: bool) -> f32 {
-        if fixed { 1.0 / 60.0 } else { get_frame_time() }
-    }
-
-    pub fn update(
+    pub fn step(
         &mut self,
         wheels_on_track: &[bool; 4],
         steer: f32,
         throttle: f32,
-        fixed_time: bool,
-    ) {
-        let dt = Car::dt(fixed_time);
+        dt: f32,
+    ) -> Intention {
         let turn_speed = FRAC_PI_6;
 
         self.steering_angle += steer * turn_speed * dt;
@@ -115,8 +131,8 @@ impl Car {
         if self.steering_angle.abs() > max_steering {
             self.skidding = true;
             self.steering_angle = self.steering_angle.clamp(-max_steering, max_steering);
-            let wheel0 = self.relative_position(&self.wheels[0]);
-            let wheel1 = self.relative_position(&self.wheels[1]);
+            let wheel0 = self.relative_position(self.wheels[0]);
+            let wheel1 = self.relative_position(self.wheels[1]);
             self.skid_marks.push_back((wheel0, wheel1));
             if self.skid_marks.len() > 100 {
                 self.skid_marks.pop_front();
@@ -125,23 +141,33 @@ impl Car {
 
         let pos_dot = Vec2::from_angle(self.rotation) * self.velocity;
         let theta_dot = self.velocity * self.steering_angle.tan() / self.wheel_base;
-        self.position += pos_dot * dt;
+        let old_position = self.position;
+        let old_rotation = self.rotation;
+
+        self.impulse *= (0.5_f32).powf(dt);
+
+        self.position += (pos_dot + self.impulse) * dt;
         self.rotation += theta_dot * dt;
 
-        self.bbox.update(
-            self.position_with_offset(self.wheel_base / 2.0),
-            self.rotation - FRAC_PI_2,
-        );
+        self.update_bbox();
+        Intention {
+            old_pos: old_position,
+            old_rot: old_rotation,
+            new_pos: self.position,
+            new_bbox: self.bbox.clone(),
+        }
     }
 
-    pub fn draw(&self) {
+    pub fn draw_skid_marks(&self) {
         self.skid_marks.iter().tuple_windows().for_each(|(a, b)| {
             if a.0.distance_squared(b.0) < 25.0 {
                 draw_line(a.0.x, a.0.y, b.0.x, b.0.y, 1.5, BLACK.with_alpha(0.5));
                 draw_line(a.1.x, a.1.y, b.1.x, b.1.y, 1.5, BLACK.with_alpha(0.5));
             }
         });
+    }
 
+    pub fn draw(&self) {
         let draw_rot = self.rotation - FRAC_PI_2;
         let rot_vec = Vec2::from_angle(self.rotation);
         let orientation = Vec2::from_angle(draw_rot);
@@ -224,8 +250,8 @@ impl Car {
     }
 
     #[inline]
-    pub fn relative_position(&self, pos: &Vec2) -> Vec2 {
-        self.position + Vec2::from_angle(self.rotation - FRAC_PI_2).rotate(*pos)
+    pub fn relative_position(&self, pos: Vec2) -> Vec2 {
+        self.position + Vec2::from_angle(self.rotation - FRAC_PI_2).rotate(pos)
     }
 
     #[inline]
@@ -234,22 +260,22 @@ impl Car {
     }
 
     #[inline]
-    pub fn rotation(&self) -> &f32 {
-        &self.rotation
+    pub fn rotation(&self) -> f32 {
+        self.rotation
     }
 
     #[inline]
-    pub fn velocity(&self) -> &f32 {
-        &self.velocity
+    pub fn velocity(&self) -> f32 {
+        self.velocity
     }
 
     #[inline]
-    pub fn steering_angle(&self) -> &f32 {
-        &self.steering_angle
+    pub fn steering_angle(&self) -> f32 {
+        self.steering_angle
     }
 
     #[inline]
-    pub fn skidding(&self) -> &bool {
-        &self.skidding
+    pub fn skidding(&self) -> bool {
+        self.skidding
     }
 }

@@ -31,20 +31,20 @@ impl Environment {
                 .with_seed(seed)
                 .with_off_track_prob(off_track_prob)
                 .with_goal(goal.to_racer_goal())
-                .build(),
+                .build(1),
         }
     }
 
     pub fn step(&mut self, steer: f32, throttle: f32) -> (Vec<f32>, f32, bool) {
         let action = racer_logic::environment::Action::new(steer, throttle);
-        let outcome = self.env.step(&action, true);
+        let outcome = self.env.step(&[action], true);
 
-        let observation: Vec<f32> = self.env.observation.clone().into();
+        let observation: Vec<f32> = self.env.observations[0].clone().into();
         (observation, outcome.reward, outcome.terminated)
     }
 
     fn observation(&self) -> Vec<f32> {
-        self.env.observation.clone().into()
+        self.env.observations[0].clone().into()
     }
 
     #[pyo3(signature = (seed=0, off_track_prob=0.0, goal=Goal::ReachFinish))]
@@ -53,7 +53,7 @@ impl Environment {
             .with_seed(seed)
             .with_off_track_prob(off_track_prob)
             .with_goal(goal.to_racer_goal())
-            .build();
+            .build(1);
         self.observation()
     }
 }

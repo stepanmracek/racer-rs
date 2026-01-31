@@ -1,6 +1,5 @@
 use super::segment::*;
 use super::shape::*;
-use crate::car::Car;
 use crate::physics::RotRect;
 use crate::physics::arc_vs_segment;
 use crate::physics::segment_vs_segment;
@@ -33,16 +32,22 @@ impl Track {
         track
     }
 
-    pub fn draw(&self, car: &Car) {
+    pub fn draw(&self, pos: &Vec2) {
         if let Some(rtree) = &self.rtree {
-            let pos = car.position();
             let view = Rect::new(pos.x - 300.0, pos.y - 200.0, 600.0, 400.0);
-            //draw_rectangle_lines(view.x, view.y, view.w, view.h, 3.0, WHITE);
             let envelope =
                 rstar::AABB::from_corners([view.x, view.y], [view.x + view.w, view.y + view.h]);
             rtree
                 .locate_in_envelope_intersecting(&envelope)
-                .for_each(|segment| segment.data.draw());
+                .for_each(|segment| {
+                    segment.data.draw();
+                    if let Shape::Straight(s) = &segment.data.shape
+                        && let Some(finish) = &self.finish
+                        && s.is_finish
+                    {
+                        finish.draw(WHITE);
+                    }
+                });
         }
     }
 
@@ -142,9 +147,13 @@ impl Track {
 
         let last = self.segments.last().unwrap();
         let center = last.start.pos.midpoint(last.end.pos);
-        let size = vec2(20.0, TRACK_WIDTH);
-        let rotation = (last.end.pos - last.start.pos).to_angle();
+        let size = vec2(TRACK_WIDTH, 20.0);
+        let rotation = (last.end.pos - last.start.pos).to_angle() - FRAC_PI_2;
         self.finish = Some(RotRect::new(center, size, rotation));
+    }
+
+    pub fn segments(&self) -> impl Iterator<Item = &Rc<Segment>> {
+        self.segments.iter()
     }
 
     pub fn compute_rtree(&mut self) {
