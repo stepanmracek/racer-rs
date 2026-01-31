@@ -94,29 +94,29 @@ impl Segment {
         rstar::AABB::from_points([self.start.pos.into(), self.end.pos.into()].iter())
     }
 
-    pub fn hits(&self, pos: &Vec2) -> bool {
+    pub fn hits(&self, pos: Vec2) -> bool {
         match &self.shape {
             Shape::Straight(straight) => {
                 let ab = self.end.pos - self.start.pos;
-                let ap = *pos - self.start.pos;
+                let ap = pos - self.start.pos;
                 let proj = ap.dot(ab) / straight.length;
                 if proj < 0.0 || proj > straight.length {
                     return false;
                 }
 
                 let closest = self.start.pos + ab.normalize() * proj;
-                let dist = (*pos - closest).length();
+                let dist = (pos - closest).length();
                 dist <= TRACK_WIDTH / 2.0
             }
             Shape::Turn(turn) => {
                 let center = turn.center(&self.start);
-                let to_pos = *pos - center;
+                let to_pos = pos - center;
                 let len = to_pos.length();
                 if len > turn.radius + TRACK_WIDTH / 2.0 || len < turn.radius - TRACK_WIDTH / 2.0 {
                     return false;
                 }
 
-                point_in_angle(pos, &center, &self.start.pos, &self.end.pos)
+                point_in_angle(pos, center, self.start.pos, self.end.pos)
             }
         }
     }

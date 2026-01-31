@@ -215,7 +215,7 @@ impl Car {
         let mut ans = [false; 4];
         for (i, wheel) in self.wheels.iter().enumerate() {
             let pos = self.position + orientation.rotate(*wheel);
-            let on_track = track.on_track(&pos);
+            let on_track = track.on_track(pos);
             ans[i] = on_track;
         }
         ans
@@ -240,8 +240,8 @@ impl Car {
     }
 
     #[inline]
-    pub fn position(&self) -> &Vec2 {
-        &self.position
+    pub fn position(&self) -> Vec2 {
+        self.position
     }
 
     #[inline]

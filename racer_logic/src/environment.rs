@@ -173,7 +173,7 @@ impl Environment {
 
     fn sensor_readings(car: &Car, track: &Track) -> SensorReadings {
         let x = car.windshield_position();
-        let nearest_segments = track.nearest_segments(&x, 10);
+        let nearest_segments = track.nearest_segments(x, 10);
         let rays = car.sensor_rays(SENSOR_REACH);
         let distances = sensor_readings(&nearest_segments, &rays);
         SensorReadings { rays, distances }
@@ -181,7 +181,7 @@ impl Environment {
 
     fn observe(car: &Car, track: &Track) -> Observation {
         let car_pos = car.windshield_position();
-        let waypoint = &track.nearest_segments(&car_pos, 1)[0].end;
+        let waypoint = &track.nearest_segments(car_pos, 1)[0].end;
 
         let to_waypoint = waypoint.pos - car_pos;
         let car_rotation = Vec2::from_angle(car.rotation());

@@ -11,7 +11,7 @@ impl FollowCamera {
     pub fn new(car: &Car) -> Self {
         let zoom = 0.01;
         let camera_2d = Camera2D {
-            target: *car.position(),
+            target: car.position(),
             zoom: vec2(zoom * (screen_height() / screen_width()), -zoom),
             rotation: -car.rotation().to_degrees() + 90.0,
             ..Default::default()

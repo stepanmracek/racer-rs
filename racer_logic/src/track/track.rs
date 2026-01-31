@@ -32,7 +32,7 @@ impl Track {
         track
     }
 
-    pub fn draw(&self, pos: &Vec2) {
+    pub fn draw(&self, pos: Vec2) {
         if let Some(rtree) = &self.rtree {
             let view = Rect::new(pos.x - 300.0, pos.y - 200.0, 600.0, 400.0);
             let envelope =
@@ -51,7 +51,7 @@ impl Track {
         }
     }
 
-    pub fn on_track(&self, pos: &Vec2) -> bool {
+    pub fn on_track(&self, pos: Vec2) -> bool {
         let rtree = &self.rtree.as_ref().unwrap();
 
         for segment in rtree.nearest_neighbor_iter(&[pos.x, pos.y]).take(2) {
@@ -63,7 +63,7 @@ impl Track {
         false
     }
 
-    pub fn nearest_segments(&self, pos: &Vec2, limit: usize) -> Vec<Rc<Segment>> {
+    pub fn nearest_segments(&self, pos: Vec2, limit: usize) -> Vec<Rc<Segment>> {
         self.rtree
             .as_ref()
             .unwrap()
@@ -187,7 +187,7 @@ pub fn sensor_readings(
                     let center = turn.center(&segment.start);
                     for d in [-WIDTH_HALF, WIDTH_HALF] {
                         let intersection = arc_vs_segment(
-                            &center,
+                            center,
                             turn.radius + d,
                             &(segment.start.pos, segment.end.pos),
                             &(*start, *end),

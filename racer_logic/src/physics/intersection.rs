@@ -1,9 +1,9 @@
 use macroquad::prelude::*;
 
-pub fn point_in_angle(point: &Vec2, center: &Vec2, start: &Vec2, end: &Vec2) -> bool {
-    let to_pos = *point - *center;
-    let to_start = *start - *center;
-    let to_end = *end - *center;
+pub fn point_in_angle(point: Vec2, center: Vec2, start: Vec2, end: Vec2) -> bool {
+    let to_pos = point - center;
+    let to_start = start - center;
+    let to_end = end - center;
 
     let ab = to_start.perp_dot(to_end);
     let av = to_start.perp_dot(to_pos);
@@ -16,13 +16,13 @@ pub fn point_in_angle(point: &Vec2, center: &Vec2, start: &Vec2, end: &Vec2) -> 
 }
 
 pub fn arc_vs_segment(
-    center: &Vec2,
+    center: Vec2,
     radius: f32,
     arc: &(Vec2, Vec2),
     segment: &(Vec2, Vec2),
 ) -> Option<Vec2> {
     let d = segment.1 - segment.0;
-    let f = segment.0 - *center;
+    let f = segment.0 - center;
 
     let a = d.length_squared();
     let b = 2.0 * (f.x * d.x + f.y * d.y);
@@ -46,7 +46,7 @@ pub fn arc_vs_segment(
     }
 
     ts.into_iter()
-        .filter(|(_t, p)| point_in_angle(p, center, &arc.0, &arc.1))
+        .filter(|(_t, p)| point_in_angle(*p, center, arc.0, arc.1))
         .reduce(|a, b| if a.0 < b.0 { a } else { b })
         .map(|(_t, p)| p)
 }

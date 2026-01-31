@@ -12,10 +12,10 @@ pub struct RotRect {
 impl RotRect {
     pub fn new(center: Vec2, size: Vec2, rotation: f32) -> Self {
         let half_size = size / 2.0;
-        let corners = RotRect::get_corners(&center, &half_size, rotation)
+        let corners = RotRect::get_corners(center, half_size, rotation)
             .try_into()
             .unwrap();
-        let axes = RotRect::get_axes(&center, &half_size, rotation)
+        let axes = RotRect::get_axes(center, half_size, rotation)
             .try_into()
             .unwrap();
         Self {
@@ -30,15 +30,15 @@ impl RotRect {
     pub fn update(&mut self, new_center: Vec2, new_rotation: f32) {
         self.center = new_center;
         self.rotation = new_rotation;
-        self.corners = RotRect::get_corners(&self.center, &self.half_size, self.rotation)
+        self.corners = RotRect::get_corners(self.center, self.half_size, self.rotation)
             .try_into()
             .unwrap();
-        self.axes = RotRect::get_axes(&self.center, &self.half_size, self.rotation)
+        self.axes = RotRect::get_axes(self.center, self.half_size, self.rotation)
             .try_into()
             .unwrap();
     }
 
-    fn get_corners(center: &Vec2, half_size: &Vec2, rotation: f32) -> Vec<Vec2> {
+    fn get_corners(center: Vec2, half_size: Vec2, rotation: f32) -> Vec<Vec2> {
         [
             vec2(1.0, 1.0),
             vec2(1.0, -1.0),
@@ -47,23 +47,23 @@ impl RotRect {
         ]
         .into_iter()
         .map(|corner| {
-            let to_corner_dir = Vec2::from_angle(rotation).rotate(*half_size * corner);
-            to_corner_dir + *center
+            let to_corner_dir = Vec2::from_angle(rotation).rotate(half_size * corner);
+            to_corner_dir + center
         })
         .collect()
     }
 
-    fn get_axes(center: &Vec2, half_size: &Vec2, rotation: f32) -> Vec<(Vec2, Vec2)> {
+    fn get_axes(center: Vec2, half_size: Vec2, rotation: f32) -> Vec<(Vec2, Vec2)> {
         let rot = Vec2::from_angle(rotation);
 
         vec![
             (
-                *center + rot.rotate(vec2(0.0, half_size.y)),
-                *center + rot.rotate(vec2(0.0, -half_size.y)),
+                center + rot.rotate(vec2(0.0, half_size.y)),
+                center + rot.rotate(vec2(0.0, -half_size.y)),
             ),
             (
-                *center + rot.rotate(vec2(half_size.x, 0.0)),
-                *center + rot.rotate(vec2(-half_size.x, 0.0)),
+                center + rot.rotate(vec2(half_size.x, 0.0)),
+                center + rot.rotate(vec2(-half_size.x, 0.0)),
             ),
         ]
     }
@@ -76,10 +76,10 @@ impl RotRect {
             return false;
         }
 
-        for (first, second) in [(&self, &other), (&other, &self)] {
-            for (axis_start, axis_end) in first.axes.iter() {
+        for (first, second) in [(self, other), (other, self)] {
+            for (axis_start, axis_end) in first.axes {
                 let mut ts = vec![];
-                for corner in second.corners.iter() {
+                for corner in second.corners {
                     let (_, t) = projection_on_line(axis_start, axis_end, corner);
                     ts.push(t);
                 }
@@ -111,12 +111,12 @@ impl RotRect {
     }
 }
 
-fn projection_on_line(line_start: &Vec2, line_end: &Vec2, point: &Vec2) -> (Vec2, f32) {
-    let to_end = *line_end - *line_start;
-    let to_point = *point - *line_start;
+fn projection_on_line(line_start: Vec2, line_end: Vec2, point: Vec2) -> (Vec2, f32) {
+    let to_end = line_end - line_start;
+    let to_point = point - line_start;
 
     let to_projection = to_end * (to_end.dot(to_point)) / (to_end.dot(to_end));
-    let projection = *line_start + to_projection;
+    let projection = line_start + to_projection;
     let t = to_projection.dot(to_end) / to_end.dot(to_end);
 
     (projection, t)
