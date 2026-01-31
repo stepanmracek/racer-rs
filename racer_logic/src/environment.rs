@@ -167,11 +167,8 @@ impl Environment {
                 .chain((1..).flat_map(|n| [n * 16, -n * 16]))
                 .take(cars_count)
                 .map(|x| {
-                    let dx = if cars_count.is_multiple_of(2) {
-                        -8.0
-                    } else {
-                        0.0
-                    };
+                    #[allow(clippy::manual_is_multiple_of)]
+                    let dx = if cars_count % 2 == 0 { -8.0 } else { 0.0 };
                     Car::new(x as f32 + dx, 15.0)
                 })
                 .collect::<Vec<_>>()
