@@ -3,7 +3,7 @@ use std::{collections::HashSet, f32::consts::FRAC_PI_2};
 use crate::{
     car::Car,
     environment::{Environment, NextWaypoint, Observation, Outcome},
-    track::{TRACK_WIDTH, Track},
+    track::Track,
 };
 
 pub trait Goal {
@@ -73,7 +73,7 @@ pub struct BackToTrack {
 }
 
 impl Goal for BackToTrack {
-    fn outcome(&mut self, _track: &Track, _car: &Car, observation: &Observation) -> Outcome {
+    fn outcome(&mut self, track: &Track, _car: &Car, observation: &Observation) -> Outcome {
         let wheels_on_track_count = observation.wheels_on_track.iter().filter(|b| **b).count();
 
         // penalize 0.25 points if some wheel is out of the track
@@ -95,7 +95,7 @@ impl Goal for BackToTrack {
 
         self.prev_wp_observation = Some(observation.next_waypoint.clone());
         let terminated = wheels_on_track_count == 4
-            && observation.next_waypoint.distance < TRACK_WIDTH / 2.0
+            && observation.next_waypoint.distance < track.width() / 2.0
             && observation.next_waypoint.alignment > 0.9
             && observation.velocity > 0.0;
         if terminated {

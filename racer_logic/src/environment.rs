@@ -3,7 +3,7 @@ use crate::{
     follow_camera::FollowCamera,
     goal::{Goal, ReachFinish},
     physics::segment_vs_rotrect,
-    track::{TRACK_WIDTH, Track, distances_to_segments},
+    track::{Track, distances_to_segments},
 };
 use macroquad::prelude::*;
 use std::{
@@ -25,6 +25,7 @@ pub struct EnvironmentBuilder {
     seed: Option<u64>,
     off_track_prob: f32,
     goal: Box<dyn Goal>,
+    track_width: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +101,7 @@ impl Default for EnvironmentBuilder {
             seed: None,
             off_track_prob: 0.0,
             goal: Box::new(ReachFinish::default()),
+            track_width: 42.0,
         }
     }
 }
@@ -117,6 +119,10 @@ impl EnvironmentBuilder {
         self.goal = goal;
         self
     }
+    pub fn with_track_width(mut self, track_width: f32) -> Self {
+        self.track_width = track_width;
+        self
+    }
     pub fn build(self, cars_count: usize) -> Result<Environment, String> {
         if cars_count == 0 {
             return Err("At least one car is required!".into());
@@ -126,6 +132,7 @@ impl EnvironmentBuilder {
             self.off_track_prob,
             self.goal,
             cars_count,
+            self.track_width,
         ))
     }
 }
@@ -136,6 +143,7 @@ impl Environment {
         off_track_prob: f32,
         goal: Box<dyn Goal>,
         cars_count: usize,
+        track_width: f32,
     ) -> Self {
         let seed = seed.unwrap_or_else(|| {
             SystemTime::now()
@@ -145,7 +153,7 @@ impl Environment {
         });
         macroquad::rand::srand(seed);
 
-        let mut track = Track::new();
+        let mut track = Track::new(track_width);
         for _ in 0..100 {
             track.add_random_shape();
         }
@@ -154,7 +162,7 @@ impl Environment {
 
         let cars = if cars_count == 1 && off_track_prob > 0.0 {
             let car = if macroquad::rand::gen_range(0.0, 1.0) <= off_track_prob {
-                let x = macroquad::rand::gen_range(-TRACK_WIDTH, TRACK_WIDTH);
+                let x = macroquad::rand::gen_range(-track_width, track_width);
                 Car::new(x, 100.)
                     .with_rotation(macroquad::rand::gen_range(-PI, PI))
                     .with_velocity(macroquad::rand::gen_range(-20., 50.))
@@ -229,7 +237,7 @@ impl Environment {
         let car_distances = Environment::rays_vs_cars(car_index, &rays, cars);
 
         let nearest_segments = track.nearest_segments(x, 10);
-        let segment_distances = distances_to_segments(&nearest_segments, &rays);
+        let segment_distances = distances_to_segments(&nearest_segments, &rays, track.width());
         SensorReadings {
             rays,
             distances: Environment::merge(&segment_distances, &car_distances),
@@ -332,6 +340,6 @@ impl Environment {
 
 impl Default for Environment {
     fn default() -> Self {
-        Self::new(Some(0), 0., Box::new(ReachFinish::default()), 1)
+        Self::new(Some(0), 0., Box::new(ReachFinish::default()), 1, 42.0)
     }
 }

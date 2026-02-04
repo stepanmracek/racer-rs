@@ -1,4 +1,3 @@
-use super::constant::*;
 use super::shape::*;
 use crate::physics::point_in_angle;
 use macroquad::prelude::*;
@@ -7,10 +6,11 @@ pub struct Segment {
     pub start: Waypoint,
     pub shape: Shape,
     pub end: Waypoint,
+    track_width: f32,
 }
 
 impl Segment {
-    pub fn new(start: Waypoint, shape: Shape) -> Self {
+    pub fn new(start: Waypoint, shape: Shape, track_width: f32) -> Self {
         let end = match shape {
             Shape::Straight(ref straight) => Waypoint {
                 pos: start.pos + start.dir * straight.length,
@@ -30,7 +30,12 @@ impl Segment {
                 }
             }
         };
-        Self { start, shape, end }
+        Self {
+            start,
+            shape,
+            end,
+            track_width,
+        }
     }
 
     pub fn draw(&self) {
@@ -38,9 +43,9 @@ impl Segment {
         match self.shape {
             Shape::Straight(_) => {
                 for (d, color, thickness) in [
-                    (0.0, track_color, TRACK_WIDTH),
-                    (-TRACK_WIDTH / 2.0, WHITE, 1.0),
-                    (TRACK_WIDTH / 2.0, WHITE, 1.0),
+                    (0.0, track_color, self.track_width),
+                    (-self.track_width / 2.0, WHITE, 1.0),
+                    (self.track_width / 2.0, WHITE, 1.0),
                 ] {
                     let shift = if d != 0.0 {
                         (self.end.pos - self.start.pos).perp().normalize() * d
@@ -68,9 +73,9 @@ impl Segment {
                     TurnType::Right => start_deg - turn.deg,
                 };
                 for (d, color, thickness) in [
-                    (-TRACK_WIDTH / 2.0, track_color, TRACK_WIDTH),
-                    (-TRACK_WIDTH / 2.0 - 0.5, WHITE, 1.0),
-                    (TRACK_WIDTH / 2.0 - 0.5, WHITE, 1.0),
+                    (-self.track_width / 2.0, track_color, self.track_width),
+                    (-self.track_width / 2.0 - 0.5, WHITE, 1.0),
+                    (self.track_width / 2.0 - 0.5, WHITE, 1.0),
                 ] {
                     draw_arc(
                         center.x,
@@ -106,13 +111,15 @@ impl Segment {
 
                 let closest = self.start.pos + ab.normalize() * proj;
                 let dist = (pos - closest).length();
-                dist <= TRACK_WIDTH / 2.0
+                dist <= self.track_width / 2.0
             }
             Shape::Turn(turn) => {
                 let center = turn.center(&self.start);
                 let to_pos = pos - center;
                 let len = to_pos.length();
-                if len > turn.radius + TRACK_WIDTH / 2.0 || len < turn.radius - TRACK_WIDTH / 2.0 {
+                if len > turn.radius + self.track_width / 2.0
+                    || len < turn.radius - self.track_width / 2.0
+                {
                     return false;
                 }
 

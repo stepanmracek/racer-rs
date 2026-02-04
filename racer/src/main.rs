@@ -64,6 +64,9 @@ struct Args {
     #[arg(long, value_name = "ENV_SEED")]
     seed: Option<u64>,
 
+    #[arg(long, value_name = "TRACK_WIDTH", default_value = "42.0")]
+    track_width: f32,
+
     #[arg(long, value_name = "CONTROLLER")]
     controller: Vec<ControllerArg>,
 }
@@ -89,6 +92,7 @@ async fn main() {
 
     let mut environment = EnvironmentBuilder::default()
         .with_seed(args.seed)
+        .with_track_width(args.track_width)
         .build(controllers.len())
         .unwrap();
 

@@ -3,7 +3,6 @@ use super::shape::*;
 use crate::physics::RotRect;
 use crate::physics::arc_vs_segment;
 use crate::physics::segment_vs_segment;
-use crate::track::constant::TRACK_WIDTH;
 use macroquad::prelude::*;
 use macroquad::rand::{gen_range, rand};
 use std::f32::consts::FRAC_PI_2;
@@ -16,14 +15,16 @@ pub struct Track {
     segments: Vec<Rc<Segment>>,
     rtree: Option<rstar::RTree<TreeNode>>,
     finish: Option<RotRect>,
+    track_width: f32,
 }
 
 impl Track {
-    pub fn new() -> Self {
+    pub fn new(track_width: f32) -> Self {
         let mut track = Self {
             segments: vec![],
             rtree: None,
             finish: None,
+            track_width,
         };
         track.add_shape(Shape::Straight(Straight {
             length: 100.0,
@@ -89,8 +90,11 @@ impl Track {
     }
 
     fn add_shape(&mut self, shape: Shape) {
-        self.segments
-            .push(Rc::new(Segment::new(self.last_end(), shape)));
+        self.segments.push(Rc::new(Segment::new(
+            self.last_end(),
+            shape,
+            self.track_width,
+        )));
     }
 
     pub fn add_random_shape(&mut self) {
@@ -125,12 +129,12 @@ impl Track {
         let choice = &choices[gen_range(0, choices.len())];
         let shape = match choice {
             TurnType::Left => Shape::Turn(Turn {
-                radius: gen_range(TRACK_WIDTH, 100.0),
+                radius: gen_range(self.track_width, 100.0),
                 deg: gen_range(30.0, max_deg_left),
                 turn_type: TurnType::Left,
             }),
             TurnType::Right => Shape::Turn(Turn {
-                radius: gen_range(TRACK_WIDTH, 100.0),
+                radius: gen_range(self.track_width, 100.0),
                 deg: gen_range(30.0, max_deg_right),
                 turn_type: TurnType::Right,
             }),
@@ -147,7 +151,7 @@ impl Track {
 
         let last = self.segments.last().unwrap();
         let center = last.start.pos.midpoint(last.end.pos);
-        let size = vec2(TRACK_WIDTH, 20.0);
+        let size = vec2(self.track_width, 20.0);
         let rotation = (last.end.pos - last.start.pos).to_angle() - FRAC_PI_2;
         self.finish = Some(RotRect::new(center, size, rotation));
     }
@@ -164,28 +168,27 @@ impl Track {
             .collect();
         self.rtree = Some(rstar::RTree::<TreeNode>::bulk_load(elements));
     }
-}
 
-impl Default for Track {
-    fn default() -> Self {
-        Self::new()
+    pub fn width(&self) -> f32 {
+        self.track_width
     }
 }
 
 pub fn distances_to_segments(
     nearest_segments: &[Rc<Segment>],
     sensor_rays: &[(Vec2, Vec2)],
+    track_width: f32,
 ) -> Vec<Option<f32>> {
     let mut ans = vec![];
     for (start, end) in sensor_rays {
         let mut nearest: Option<f32> = None;
-        const WIDTH_HALF: f32 = TRACK_WIDTH / 2.0;
+        let width_half: f32 = track_width / 2.0;
 
         for segment in nearest_segments {
             match &segment.shape {
                 Shape::Turn(turn) => {
                     let center = turn.center(&segment.start);
-                    for d in [-WIDTH_HALF, WIDTH_HALF] {
+                    for d in [-width_half, width_half] {
                         let intersection = arc_vs_segment(
                             center,
                             turn.radius + d,
@@ -201,7 +204,7 @@ pub fn distances_to_segments(
                     }
                 }
                 Shape::Straight(_) => {
-                    for d in [-WIDTH_HALF, WIDTH_HALF] {
+                    for d in [-width_half, width_half] {
                         let shift = segment.start.dir.perp() * d;
                         let intersection = segment_vs_segment(
                             &(*start, *end),
