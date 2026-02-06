@@ -1,5 +1,5 @@
 use crate::{
-    car::Car,
+    car::{Car, Intention},
     follow_camera::FollowCamera,
     goal::{Goal, ReachFinish},
     physics::segment_vs_rotrect,
@@ -289,6 +289,25 @@ impl Environment {
         }
     }
 
+    fn handle_collision(
+        &mut self,
+        dt: f32,
+        collision_point: Vec2,
+        intentions: &[Intention],
+        this: usize,
+        other: usize,
+    ) {
+        let this_velocity = intentions[this].new_pos - intentions[this].old_pos;
+        let other_velocity = intentions[other].new_pos - intentions[other].old_pos;
+        let rel_velocity = (this_velocity - other_velocity) / dt;
+
+        let to_collision = (collision_point - intentions[this].new_bbox.center()).normalize();
+        let rotational_impulse = (rel_velocity / 50.0).perp_dot(to_collision);
+
+        self.cars[this].reset(intentions[this].old_pos, intentions[this].old_rot, 0.0);
+        self.cars[this].impulse(-rel_velocity / 2.0, rotational_impulse);
+    }
+
     pub fn step(&mut self, actions: &[Action], fixed_time: bool) -> Outcome {
         let dt = Environment::dt(fixed_time);
         let intentions = std::iter::zip(
@@ -305,22 +324,22 @@ impl Environment {
         })
         .collect::<Vec<_>>();
 
-        for this in 0..intentions.len() {
-            for other in 0..intentions.len() {
-                if this == other {
-                    continue;
-                }
-                if intentions[this]
+        for this in 0..intentions.len() - 1 {
+            for other in this + 1..intentions.len() {
+                if let Some(collision_point) = intentions[this]
                     .new_bbox
-                    .collide(&intentions[other].new_bbox)
+                    .collision_point(&intentions[other].new_bbox)
                 {
-                    let this_velocity = intentions[this].new_pos - intentions[this].old_pos;
-                    let other_velocity = intentions[other].new_pos - intentions[other].old_pos;
-                    let rel_velocity = (this_velocity - other_velocity) / get_frame_time();
-                    self.cars[this].impulse(-rel_velocity / 2.0);
-                    self.cars[this].reset(intentions[this].old_pos, intentions[this].old_rot, 0.0);
+                    self.handle_collision(dt, collision_point, &intentions, this, other);
+                    self.handle_collision(dt, collision_point, &intentions, other, this);
                     break;
                 }
+            }
+        }
+
+        for i in 0..self.cars.len() - 1 {
+            for j in i + 1..self.cars.len() {
+                debug_assert!(!self.cars[i].bbox().collide(self.cars[j].bbox()));
             }
         }
 

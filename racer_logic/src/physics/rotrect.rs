@@ -12,12 +12,8 @@ pub struct RotRect {
 impl RotRect {
     pub fn new(center: Vec2, size: Vec2, rotation: f32) -> Self {
         let half_size = size / 2.0;
-        let corners = RotRect::compute_corners(center, half_size, rotation)
-            .try_into()
-            .unwrap();
-        let axes = RotRect::compute_axes(center, half_size, rotation)
-            .try_into()
-            .unwrap();
+        let corners = RotRect::compute_corners(center, half_size, rotation);
+        let axes = RotRect::compute_axes(center, half_size, rotation);
         Self {
             center,
             half_size,
@@ -30,33 +26,28 @@ impl RotRect {
     pub fn update(&mut self, new_center: Vec2, new_rotation: f32) {
         self.center = new_center;
         self.rotation = new_rotation;
-        self.corners = RotRect::compute_corners(self.center, self.half_size, self.rotation)
-            .try_into()
-            .unwrap();
-        self.axes = RotRect::compute_axes(self.center, self.half_size, self.rotation)
-            .try_into()
-            .unwrap();
+        self.corners = RotRect::compute_corners(self.center, self.half_size, self.rotation);
+        self.axes = RotRect::compute_axes(self.center, self.half_size, self.rotation);
     }
 
-    fn compute_corners(center: Vec2, half_size: Vec2, rotation: f32) -> Vec<Vec2> {
-        [
+    fn compute_corners(center: Vec2, half_size: Vec2, rotation: f32) -> [Vec2; 4] {
+        let mut corners = [
             vec2(1.0, 1.0),
             vec2(1.0, -1.0),
             vec2(-1.0, 1.0),
             vec2(-1.0, -1.0),
-        ]
-        .into_iter()
-        .map(|corner| {
-            let to_corner_dir = Vec2::from_angle(rotation).rotate(half_size * corner);
-            to_corner_dir + center
-        })
-        .collect()
+        ];
+
+        for corner in &mut corners {
+            let to_corner_dir = Vec2::from_angle(rotation).rotate(half_size * *corner);
+            *corner = to_corner_dir + center;
+        }
+        corners
     }
 
-    fn compute_axes(center: Vec2, half_size: Vec2, rotation: f32) -> Vec<(Vec2, Vec2)> {
+    fn compute_axes(center: Vec2, half_size: Vec2, rotation: f32) -> [(Vec2, Vec2); 2] {
         let rot = Vec2::from_angle(rotation);
-
-        vec![
+        [
             (
                 center + rot.rotate(vec2(0.0, half_size.y)),
                 center + rot.rotate(vec2(0.0, -half_size.y)),
@@ -96,6 +87,40 @@ impl RotRect {
         true
     }
 
+    pub fn collision_point(&self, other: &RotRect) -> Option<Vec2> {
+        let d = (self.center - other.center).length()
+            - self.half_size.length()
+            - other.half_size.length();
+        if d > 0.0 {
+            return None;
+        }
+
+        for &corner in &self.corners {
+            if other.is_point_inside(corner) {
+                return Some(corner);
+            }
+        }
+
+        #[allow(clippy::manual_find)]
+        for &corner in &other.corners {
+            if self.is_point_inside(corner) {
+                return Some(corner);
+            }
+        }
+
+        None
+    }
+
+    fn is_point_inside(&self, point: Vec2) -> bool {
+        for (axis_start, axis_end) in self.axes {
+            let (_, t) = projection_on_line(axis_start, axis_end, point);
+            if !(0.0..=1.0).contains(&t) {
+                return false;
+            }
+        }
+        true
+    }
+
     pub fn draw(&self, color: Color) {
         draw_rectangle_ex(
             self.center.x,
@@ -112,6 +137,14 @@ impl RotRect {
 
     pub fn corners(&self) -> &[Vec2; 4] {
         &self.corners
+    }
+
+    pub fn center(&self) -> Vec2 {
+        self.center
+    }
+
+    pub fn rotation(&self) -> f32 {
+        self.rotation
     }
 }
 

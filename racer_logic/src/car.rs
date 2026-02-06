@@ -18,7 +18,8 @@ pub struct Car {
     bbox: RotRect,
     skid_marks: std::collections::VecDeque<(Vec2, Vec2)>,
     skidding: bool,
-    impulse: Vec2,
+    impulse_shift: Vec2,
+    impulse_rot: f32,
 }
 
 pub struct Intention {
@@ -53,12 +54,14 @@ impl Car {
             ),
             skid_marks: VecDeque::new(),
             skidding: false,
-            impulse: Vec2::ZERO,
+            impulse_shift: Vec2::ZERO,
+            impulse_rot: 0.0,
         }
     }
 
-    pub fn impulse(&mut self, impulse: Vec2) {
-        self.impulse = impulse;
+    pub fn impulse(&mut self, impulse_shift: Vec2, impulse_rot: f32) {
+        self.impulse_shift = impulse_shift;
+        self.impulse_rot = impulse_rot;
     }
 
     pub fn with_rotation(mut self, rotation: f32) -> Self {
@@ -88,6 +91,8 @@ impl Car {
         self.rotation = rotation;
         self.velocity = velocity;
         self.steering_angle = 0.0;
+        self.impulse_shift = Vec2::ZERO;
+        self.impulse_rot = 0.0;
         self.update_bbox();
     }
 
@@ -144,10 +149,12 @@ impl Car {
         let old_position = self.position;
         let old_rotation = self.rotation;
 
-        self.impulse *= (0.5_f32).powf(dt);
+        self.position += (pos_dot + self.impulse_shift) * dt;
+        self.rotation += (theta_dot + self.impulse_rot) * dt;
 
-        self.position += (pos_dot + self.impulse) * dt;
-        self.rotation += theta_dot * dt;
+        let decay = (0.5_f32).powf(dt);
+        self.impulse_shift *= decay;
+        self.impulse_rot *= decay;
 
         self.update_bbox();
         Intention {
