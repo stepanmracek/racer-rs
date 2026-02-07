@@ -133,13 +133,16 @@ impl Car {
 
         // skidding ?
         let max_steering = self.max_steer();
-        if self.steering_angle.abs() > max_steering {
+        if self.steering_angle.abs() > max_steering
+            || self.impulse_rot.abs() > 0.01
+            || self.impulse_shift.length_squared() > 1.0
+        {
             self.skidding = true;
             self.steering_angle = self.steering_angle.clamp(-max_steering, max_steering);
             let wheel0 = self.relative_position(self.wheels[0]);
             let wheel1 = self.relative_position(self.wheels[1]);
             self.skid_marks.push_back((wheel0, wheel1));
-            if self.skid_marks.len() > 100 {
+            if self.skid_marks.len() > 500 {
                 self.skid_marks.pop_front();
             }
         }
