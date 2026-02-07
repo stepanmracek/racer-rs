@@ -308,7 +308,7 @@ impl Environment {
         self.cars[this].impulse(-rel_velocity / 2.0, rotational_impulse);
     }
 
-    pub fn step(&mut self, actions: &[Action], fixed_time: bool) -> Outcome {
+    pub fn step(&mut self, actions: &[Action], fixed_time: bool) -> Vec<Outcome> {
         let dt = Environment::dt(fixed_time);
         let intentions = std::iter::zip(
             self.cars.iter_mut(),
@@ -344,14 +344,15 @@ impl Environment {
         }
 
         self.observations = Environment::observe_all(&self.cars, &self.track);
-        self.goal
-            .outcome(&self.track, &self.cars[0], &self.observations[0])
+        std::iter::zip(self.cars.iter(), self.observations.iter())
+            .map(|(car, observation)| self.goal.outcome(&self.track, car, observation))
+            .collect()
     }
 
     pub fn draw(&self, follow_camera: &mut FollowCamera) {
         clear_background(DARKGREEN);
-        follow_camera.update(&self.cars[0]);
-        self.track.draw(self.cars[0].position());
+        follow_camera.update(&self.cars);
+        self.track.draw(follow_camera.target());
         self.cars.iter().for_each(|c| c.draw_skid_marks());
         self.cars.iter().for_each(|c| c.draw());
     }

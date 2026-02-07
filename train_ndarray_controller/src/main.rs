@@ -32,7 +32,7 @@ impl ga::Individual for Individual {
         let mut reward = 0.0;
         for _ in 0..60 * 60 {
             let action = self.0.control(&env.observations[0]);
-            let output = env.step(&[action], true);
+            let output = &env.step(&[action], true)[0];
             reward += output.reward;
             if output.terminated {
                 break;

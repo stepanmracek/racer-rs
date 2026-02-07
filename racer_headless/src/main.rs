@@ -47,7 +47,7 @@ fn main() {
         controller.reset();
         for _ in 0..100 * 60 {
             let action = controller.control(&env.observations[0]);
-            let output = env.step(&[action], true);
+            let output = &env.step(&[action], true)[0];
             if output.terminated {
                 if !output.truncated {
                     finish_count += 1;

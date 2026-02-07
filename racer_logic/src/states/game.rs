@@ -71,8 +71,8 @@ impl State for Game {
             .map(|(controller, observation)| controller.control(observation))
             .collect::<Vec<_>>();
 
-        let outcome = environment.step(&actions, false);
-        self.reward += outcome.reward;
+        let outcomes = environment.step(&actions, false);
+        self.reward += outcomes[0].reward;
 
         if is_key_pressed(KeyCode::Space) {
             let nearest_segment = &environment
@@ -88,8 +88,12 @@ impl State for Game {
         if is_key_pressed(KeyCode::O) {
             self.show_observation = !self.show_observation;
         }
+        if is_key_pressed(KeyCode::C) {
+            self.follow_camera
+                .set_car_index((self.follow_camera.car_index() + 1) % environment.cars.len());
+        }
 
-        if outcome.terminated {
+        if outcomes.iter().any(|outcome| outcome.terminated) {
             Some(Box::new(Finish::new(
                 &self.follow_camera,
                 self.current_time(),

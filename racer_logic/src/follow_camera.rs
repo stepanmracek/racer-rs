@@ -5,6 +5,7 @@ use std::f32::consts::FRAC_PI_2;
 pub struct FollowCamera {
     zoom: f32,
     camera_2d: Camera2D,
+    car_index: usize,
 }
 
 impl FollowCamera {
@@ -16,10 +17,15 @@ impl FollowCamera {
             rotation: -car.rotation().to_degrees() + 90.0,
             ..Default::default()
         };
-        Self { zoom, camera_2d }
+        Self {
+            zoom,
+            camera_2d,
+            car_index: 0,
+        }
     }
 
-    pub fn update(&mut self, car: &Car) {
+    pub fn update(&mut self, cars: &[Car]) {
+        let car = &cars[self.car_index];
         let car_rotation = car.rotation() - FRAC_PI_2;
         let target = car.position_with_offset(50.0);
         let dt = get_frame_time();
@@ -27,6 +33,18 @@ impl FollowCamera {
         self.camera_2d.target = self.camera_2d.target.lerp(target, 5.0 * dt);
         self.camera_2d.zoom = vec2(self.zoom * (screen_height() / screen_width()), -self.zoom);
         set_camera(&self.camera_2d);
+    }
+
+    pub fn target(&self) -> Vec2 {
+        self.camera_2d.target
+    }
+
+    pub fn car_index(&self) -> usize {
+        self.car_index
+    }
+
+    pub fn set_car_index(&mut self, car_index: usize) {
+        self.car_index = car_index
     }
 }
 
@@ -42,6 +60,7 @@ impl Clone for FollowCamera {
                 render_target: self.camera_2d.render_target.clone(),
                 viewport: self.camera_2d.viewport,
             },
+            car_index: self.car_index,
         }
     }
 }
