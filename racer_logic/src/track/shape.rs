@@ -6,15 +6,6 @@ pub struct Waypoint {
     pub dir: Vec2,
 }
 
-impl Waypoint {
-    #[allow(dead_code)]
-    fn draw(&self) {
-        draw_circle_lines(self.pos.x, self.pos.y, 5.0, 1.0, YELLOW);
-        let end = self.pos + (self.dir * 20.0);
-        draw_line(self.pos.x, self.pos.y, end.x, end.y, 1.0, YELLOW);
-    }
-}
-
 impl Default for Waypoint {
     fn default() -> Self {
         Waypoint {

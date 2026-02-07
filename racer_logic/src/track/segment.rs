@@ -90,9 +90,6 @@ impl Segment {
                 }
             }
         }
-
-        // self.start.draw();
-        // end.draw();
     }
 
     pub fn bbox(&self) -> rstar::AABB<[f32; 2]> {

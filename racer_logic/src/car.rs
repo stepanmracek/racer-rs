@@ -134,8 +134,8 @@ impl Car {
         // skidding ?
         let max_steering = self.max_steer();
         if self.steering_angle.abs() > max_steering
-            || self.impulse_rot.abs() > 0.01
-            || self.impulse_shift.length_squared() > 1.0
+            || self.impulse_rot.abs() > 0.1
+            || self.impulse_shift.length() > 5.0
         {
             self.skidding = true;
             self.steering_angle = self.steering_angle.clamp(-max_steering, max_steering);

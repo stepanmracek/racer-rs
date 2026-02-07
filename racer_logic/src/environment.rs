@@ -171,14 +171,12 @@ impl Environment {
             };
             vec![car]
         } else {
+            #[allow(clippy::manual_is_multiple_of)]
+            let dx = if cars_count % 2 == 0 { -10.0 } else { 0.0 };
             std::iter::once(0)
-                .chain((1..).flat_map(|n| [n * 16, -n * 16]))
+                .chain((1..).flat_map(|n| [n * 20, -n * 20]))
                 .take(cars_count)
-                .map(|x| {
-                    #[allow(clippy::manual_is_multiple_of)]
-                    let dx = if cars_count % 2 == 0 { -8.0 } else { 0.0 };
-                    Car::new(x as f32 + dx, 15.0)
-                })
+                .map(|x| Car::new(x as f32 + dx, 15.0))
                 .collect::<Vec<_>>()
         };
 
