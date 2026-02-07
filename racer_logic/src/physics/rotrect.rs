@@ -139,6 +139,15 @@ impl RotRect {
         &self.corners
     }
 
+    pub fn segments(&self) -> [(Vec2, Vec2); 4] {
+        [
+            (self.corners[0], self.corners[1]),
+            (self.corners[1], self.corners[3]),
+            (self.corners[3], self.corners[2]),
+            (self.corners[2], self.corners[0]),
+        ]
+    }
+
     pub fn center(&self) -> Vec2 {
         self.center
     }

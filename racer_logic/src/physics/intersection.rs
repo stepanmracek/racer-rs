@@ -72,16 +72,8 @@ pub fn segment_vs_segment(first: &(Vec2, Vec2), second: &(Vec2, Vec2)) -> Option
 }
 
 pub fn segment_vs_rotrect(segment: &(Vec2, Vec2), rotrect: &RotRect) -> Option<Vec2> {
-    let corners = rotrect.corners();
-
-    let rect_segments = [
-        (corners[0], corners[1]),
-        (corners[1], corners[2]),
-        (corners[2], corners[3]),
-        (corners[3], corners[0]),
-    ];
-
-    rect_segments
+    rotrect
+        .segments()
         .iter()
         .filter_map(|other| segment_vs_segment(segment, other))
         .min_by(|a, b| {
