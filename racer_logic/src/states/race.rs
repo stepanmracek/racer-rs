@@ -9,27 +9,19 @@ use crate::{
 use macroquad::prelude::*;
 use std::iter::zip;
 
-pub struct Game {
-    follow_camera: FollowCamera,
-    state_started: f64,
-    controllers: Vec<Box<dyn Controller>>,
+pub struct Race {
     reward: f32,
     show_observation: bool,
+    state_started: f64,
 }
 
-impl Game {
-    pub fn new(follow_camera: &FollowCamera, controllers: Vec<Box<dyn Controller>>) -> Self {
-        let follow_camera = follow_camera.clone();
-        let mut game = Self {
-            follow_camera,
-            state_started: get_time(),
-            controllers,
+impl Race {
+    pub fn new() -> Self {
+        Self {
             reward: 0.0,
             show_observation: false,
-        };
-
-        game.controllers.iter_mut().for_each(|c| c.reset());
-        game
+            state_started: get_time(),
+        }
     }
 
     fn draw_stopwatch(&self) {
@@ -65,9 +57,14 @@ impl Game {
     }
 }
 
-impl State for Game {
-    fn step(&mut self, environment: &mut Environment) -> Option<Box<dyn State>> {
-        let actions = std::iter::zip(self.controllers.iter_mut(), environment.observations.iter())
+impl State for Race {
+    fn step(
+        &mut self,
+        environment: &mut Environment,
+        controllers: &mut [Box<dyn Controller>],
+        follow_camera: &mut FollowCamera,
+    ) -> Option<Box<dyn State>> {
+        let actions = std::iter::zip(controllers.iter_mut(), environment.observations.iter())
             .map(|(controller, observation)| controller.control(observation))
             .collect::<Vec<_>>();
 
@@ -83,30 +80,26 @@ impl State for Game {
                 nearest_segment.start.dir.to_angle(),
                 0.0,
             );
-            self.controllers[0].reset();
+            controllers[0].reset();
         }
         if is_key_pressed(KeyCode::O) {
             self.show_observation = !self.show_observation;
         }
         if is_key_pressed(KeyCode::C) {
-            self.follow_camera
-                .set_car_index((self.follow_camera.car_index() + 1) % environment.cars.len());
+            follow_camera.set_car_index((follow_camera.car_index() + 1) % environment.cars.len());
         }
 
         if outcomes.iter().any(|outcome| outcome.terminated) {
-            Some(Box::new(Finish::new(
-                &self.follow_camera,
-                self.current_time(),
-            )))
+            Some(Box::new(Finish::new(self.current_time())))
         } else {
             None
         }
     }
 
-    fn draw(&mut self, environment: &Environment) {
-        environment.draw(&mut self.follow_camera);
+    fn draw(&mut self, environment: &Environment, follow_camera: &mut FollowCamera) {
+        environment.draw(follow_camera);
         if self.show_observation {
-            Game::draw_observation(
+            Race::draw_observation(
                 &environment.observations[0],
                 &environment.cars[0],
                 self.reward,

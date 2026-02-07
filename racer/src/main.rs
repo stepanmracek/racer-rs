@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use racer_logic::{
     controller::{Controller, KeyboardArrowsController, KeyboardWASDController},
     environment::EnvironmentBuilder,
-    states::{Init, State},
+    game::Game,
 };
 use racer_ndarray_controller::NdarrayController;
 use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
@@ -99,15 +99,10 @@ async fn main() {
     for (i, car) in environment.cars.iter_mut().enumerate() {
         car.load_texture(i + 1).await;
     }
-    let mut state: Box<dyn State> = Box::new(Init::new(&environment, controllers));
+    let mut game = Game::new(environment, controllers);
 
     loop {
-        if let Some(next_state) = state.step(&mut environment) {
-            state = next_state;
-        }
-
-        state.draw(&environment);
-
+        game.step();
         next_frame().await;
     }
 }

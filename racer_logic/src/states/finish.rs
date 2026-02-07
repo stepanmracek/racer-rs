@@ -1,30 +1,31 @@
 use crate::{
-    environment::Environment, follow_camera::FollowCamera, states::State, utils::format_time,
+    controller::Controller, environment::Environment, follow_camera::FollowCamera, states::State,
+    utils::format_time,
 };
 use macroquad::prelude::*;
 
 pub struct Finish {
-    follow_camera: FollowCamera,
     result_time: f64,
 }
 
 impl Finish {
-    pub fn new(follow_camera: &FollowCamera, result_time: f64) -> Self {
-        let follow_camera = follow_camera.clone();
-        Self {
-            follow_camera,
-            result_time,
-        }
+    pub fn new(result_time: f64) -> Self {
+        Self { result_time }
     }
 }
 
 impl State for Finish {
-    fn step(&mut self, _environment: &mut Environment) -> Option<Box<dyn State>> {
+    fn step(
+        &mut self,
+        _environment: &mut Environment,
+        _controllers: &mut [Box<dyn Controller>],
+        _follow_camera: &mut FollowCamera,
+    ) -> Option<Box<dyn State>> {
         None
     }
 
-    fn draw(&mut self, environment: &Environment) {
-        environment.draw(&mut self.follow_camera);
+    fn draw(&mut self, environment: &Environment, follow_camera: &mut FollowCamera) {
+        environment.draw(follow_camera);
 
         set_default_camera();
         let time = format_time(self.result_time);

@@ -1,10 +1,11 @@
 pub mod controller;
 pub mod environment;
+pub mod game;
 pub mod goal;
-pub mod physics;
 pub mod states;
 
 mod car;
 mod follow_camera;
+mod physics;
 mod track;
 mod utils;
