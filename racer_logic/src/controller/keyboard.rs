@@ -1,7 +1,4 @@
-use crate::{
-    controller::Controller,
-    environment::{Action, Observation},
-};
+use crate::{controller::Controller, environment::Action, observation::Observation};
 use macroquad::prelude::*;
 
 #[derive(Default)]

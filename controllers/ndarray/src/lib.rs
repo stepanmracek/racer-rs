@@ -1,10 +1,8 @@
 use ndarray::Array2;
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::{Normal, Uniform};
-use racer_logic::{
-    controller::Controller,
-    environment::{Action, Observation},
-};
+use racer_logic::observation::Observation;
+use racer_logic::{controller::Controller, environment::Action};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]

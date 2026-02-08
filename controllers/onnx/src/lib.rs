@@ -1,11 +1,7 @@
+use racer_logic::{controller::Controller, environment::Action, observation::Observation};
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
 use std::collections::HashMap;
-
-use racer_logic::{
-    controller::Controller,
-    environment::{Action, Observation},
-};
 
 pub enum ActionSelectionStrategy {
     Greedy,

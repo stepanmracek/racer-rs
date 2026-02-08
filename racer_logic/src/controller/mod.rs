@@ -1,4 +1,4 @@
-use crate::environment::{Action, Observation};
+use crate::{environment::Action, observation::Observation};
 mod keyboard;
 pub use keyboard::{KeyboardArrowsController, KeyboardWASDController};
 

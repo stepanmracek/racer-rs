@@ -1,7 +1,9 @@
 use crate::{
     car::{Car, Intention},
+    constants::SENSOR_REACH,
     follow_camera::FollowCamera,
     goal::{Goal, ReachFinish},
+    observation::{NextWaypoint, ObjectType, Observation, SensorReadings},
     physics::segment_vs_rotrect,
     track::{Track, distances_to_segments},
 };
@@ -9,10 +11,7 @@ use macroquad::prelude::*;
 use std::{
     f32::consts::{FRAC_PI_2, PI},
     time::{SystemTime, UNIX_EPOCH},
-    vec,
 };
-
-pub const SENSOR_REACH: f32 = 205.0;
 
 pub struct Environment {
     pub track: Track,
@@ -28,28 +27,6 @@ pub struct EnvironmentBuilder {
     off_track_prob: f32,
     goal: Box<dyn Goal>,
     track_width: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct SensorReadings {
-    pub rays: Vec<(Vec2, Vec2)>,
-    pub distances: Vec<Option<f32>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct NextWaypoint {
-    pub angle: f32,
-    pub distance: f32,
-    pub alignment: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct Observation {
-    pub velocity: f32,
-    pub steering_angle: f32,
-    pub wheels_on_track: [bool; 4],
-    pub sensors: SensorReadings,
-    pub next_waypoint: NextWaypoint,
 }
 
 #[derive(Debug)]
@@ -76,25 +53,6 @@ pub struct Outcome {
     // Whether the truncation condition is satisfied.
     pub truncated: bool,
     pub reward: f32,
-}
-
-impl From<Observation> for Vec<f32> {
-    fn from(o: Observation) -> Vec<f32> {
-        let mut ans = vec![
-            o.velocity,
-            o.steering_angle,
-            o.next_waypoint.angle,
-            o.next_waypoint.distance,
-        ];
-        ans.extend(o.wheels_on_track.iter().map(|&w| if w { 1.0 } else { 0.0 }));
-        ans.extend(
-            o.sensors
-                .distances
-                .iter()
-                .map(|r| r.unwrap_or(SENSOR_REACH)),
-        );
-        ans
-    }
 }
 
 impl Default for EnvironmentBuilder {
@@ -232,14 +190,20 @@ impl Environment {
             .collect()
     }
 
-    fn merge(dist1: &[Option<f32>], dist2: &[Option<f32>]) -> Vec<Option<f32>> {
-        dist1
+    fn merge(segments: &[Option<f32>], cars: &[Option<f32>]) -> Vec<Option<(ObjectType, f32)>> {
+        segments
             .iter()
-            .zip(dist2.iter())
-            .map(|(&d1, &d2)| match (d1, d2) {
-                (Some(val1), Some(val2)) => Some(val1.min(val2)),
-                (Some(val1), None) => Some(val1),
-                (None, Some(val2)) => Some(val2),
+            .zip(cars.iter())
+            .map(|(&segment, &car)| match (segment, car) {
+                (Some(segment), Some(car)) => {
+                    if segment < car {
+                        Some((ObjectType::Track, segment))
+                    } else {
+                        Some((ObjectType::Car, car))
+                    }
+                }
+                (Some(segment), None) => Some((ObjectType::Track, segment)),
+                (None, Some(car)) => Some((ObjectType::Car, car)),
                 (None, None) => None,
             })
             .collect()

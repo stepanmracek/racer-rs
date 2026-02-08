@@ -2,7 +2,8 @@ use std::{collections::HashSet, f32::consts::FRAC_PI_2};
 
 use crate::{
     car::Car,
-    environment::{Environment, NextWaypoint, Observation, Outcome},
+    environment::{Environment, Outcome},
+    observation::{NextWaypoint, Observation},
     track::Track,
 };
 

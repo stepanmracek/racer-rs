@@ -1,8 +1,9 @@
 use crate::{
     car::Car,
     controller::Controller,
-    environment::{Environment, Observation},
+    environment::Environment,
     follow_camera::FollowCamera,
+    observation::{ObjectType, Observation},
     states::{State, finish::Finish},
     utils::format_time,
 };
@@ -37,9 +38,13 @@ impl Race {
     fn draw_observation(observation: &Observation, _car: &Car, reward: f32) {
         for (d, (start, end)) in zip(&observation.sensors.distances, &observation.sensors.rays) {
             draw_line(start.x, start.y, end.x, end.y, 0.3, GREEN.with_alpha(0.2));
-            if let Some(d) = d {
+            if let Some((object, d)) = d {
+                let color = match object {
+                    ObjectType::Car => YELLOW,
+                    ObjectType::Track => RED,
+                };
                 let p = (*end - *start).normalize() * *d + *start;
-                draw_circle(p.x, p.y, 1.0, RED);
+                draw_circle(p.x, p.y, 1.0, color);
             }
         }
 
@@ -73,7 +78,7 @@ impl State for Race {
         controllers: &mut [Box<dyn Controller>],
         follow_camera: &mut FollowCamera,
     ) -> Option<Box<dyn State>> {
-        let actions = std::iter::zip(controllers.iter_mut(), environment.observations.iter())
+        let actions = zip(controllers.iter_mut(), &environment.observations)
             .map(|(controller, observation)| controller.control(observation))
             .collect::<Vec<_>>();
 

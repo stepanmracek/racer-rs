@@ -1,6 +1,8 @@
 use racer_logic::{
+    constants::SENSOR_REACH,
     controller::Controller,
-    environment::{Action, Observation, SENSOR_REACH},
+    environment::Action,
+    observation::{Observation, get_distance},
 };
 use serde::{Deserialize, Serialize};
 
@@ -100,7 +102,7 @@ impl Controller for PidController {
         let distances = o.sensors.distances[6..=12]
             .iter()
             .map(|d| {
-                (d.unwrap_or(SENSOR_REACH) / self.side_sensors_reach)
+                (get_distance(d) / self.side_sensors_reach)
                     .clamp(0.0, 1.0)
                     .powf(self.side_sensors_exp)
             })
@@ -119,8 +121,8 @@ impl Controller for PidController {
         let error = (left_space - right_space) * self.side_sensors_coef;
         let steer = self.steer.update(error);
 
-        let front_sensor = (o.sensors.distances[9].unwrap_or(SENSOR_REACH) / SENSOR_REACH)
-            .powf(self.front_sensor_exp);
+        let front_sensor =
+            (get_distance(&o.sensors.distances[9]) / SENSOR_REACH).powf(self.front_sensor_exp);
         let target_speed = self.min_speed + front_sensor * (self.max_speed - self.min_speed);
         let error = target_speed - o.velocity;
         let throttle = self.throttle.update(error);
