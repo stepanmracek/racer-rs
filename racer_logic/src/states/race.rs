@@ -58,6 +58,15 @@ impl Race {
 }
 
 impl State for Race {
+    fn init(
+        &mut self,
+        _environment: &mut Environment,
+        controllers: &mut [Box<dyn Controller>],
+        _follow_camera: &mut FollowCamera,
+    ) {
+        controllers.iter_mut().for_each(|c| c.reset());
+    }
+
     fn step(
         &mut self,
         environment: &mut Environment,

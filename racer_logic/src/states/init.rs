@@ -10,14 +10,22 @@ use macroquad::prelude::*;
 pub struct Init {}
 
 impl State for Init {
+    fn init(
+        &mut self,
+        environment: &mut Environment,
+        _controllers: &mut [Box<dyn Controller>],
+        _follow_camera: &mut FollowCamera,
+    ) {
+        environment.reset();
+    }
+
     fn step(
         &mut self,
         _environment: &mut Environment,
-        controllers: &mut [Box<dyn Controller>],
+        _controllers: &mut [Box<dyn Controller>],
         _follow_camera: &mut FollowCamera,
     ) -> Option<Box<dyn State>> {
         if is_key_pressed(KeyCode::Space) {
-            controllers.iter_mut().for_each(|c| c.reset());
             Some(Box::new(Race::new()))
         } else {
             None

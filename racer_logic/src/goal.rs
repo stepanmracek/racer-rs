@@ -8,9 +8,11 @@ use crate::{
 
 pub trait Goal {
     fn outcome(&mut self, track: &Track, car: &Car, observation: &Observation) -> Outcome;
+    fn reset(&mut self);
+    fn cloned(&self) -> Box<dyn Goal>;
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ReachFinish {
     rewarded_waypoints: HashSet<(i32, i32)>,
     out_of_track_in_row: usize,
@@ -56,7 +58,7 @@ impl Goal for ReachFinish {
         }
 
         // end simulation if reached finish or out of track for too long (5 seconds @ 60 fps)
-        let truncated = self.out_of_track_in_row > 300;
+        let truncated = self.out_of_track_in_row >= 300;
         let terminated = finish_line || truncated;
 
         Outcome {
@@ -65,9 +67,18 @@ impl Goal for ReachFinish {
             reward,
         }
     }
+
+    fn reset(&mut self) {
+        self.out_of_track_in_row = 0;
+        self.rewarded_waypoints.clear();
+    }
+
+    fn cloned(&self) -> Box<dyn Goal> {
+        Box::new(self.clone())
+    }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BackToTrack {
     prev_wp_observation: Option<NextWaypoint>,
 }
@@ -106,5 +117,13 @@ impl Goal for BackToTrack {
             reward,
             truncated: false,
         }
+    }
+
+    fn reset(&mut self) {
+        self.prev_wp_observation.take();
+    }
+
+    fn cloned(&self) -> Box<dyn Goal> {
+        Box::new(self.clone())
     }
 }

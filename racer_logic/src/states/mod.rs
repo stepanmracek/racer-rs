@@ -6,6 +6,13 @@ mod race;
 pub use init::Init;
 
 pub trait State {
+    fn init(
+        &mut self,
+        environment: &mut Environment,
+        controllers: &mut [Box<dyn Controller>],
+        follow_camera: &mut FollowCamera,
+    );
+
     fn step(
         &mut self,
         environment: &mut Environment,

@@ -30,6 +30,11 @@ impl Game {
             &mut self.follow_camera,
         ) {
             self.state = next_state;
+            self.state.init(
+                &mut self.environment,
+                &mut self.controllers,
+                &mut self.follow_camera,
+            );
         }
 
         self.state.draw(&self.environment, &mut self.follow_camera);

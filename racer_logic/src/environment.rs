@@ -7,7 +7,7 @@ use crate::{
 };
 use macroquad::prelude::*;
 use std::{
-    f32::consts::PI,
+    f32::consts::{FRAC_PI_2, PI},
     time::{SystemTime, UNIX_EPOCH},
     vec,
 };
@@ -18,7 +18,9 @@ pub struct Environment {
     pub track: Track,
     pub cars: Vec<Car>,
     pub observations: Vec<Observation>,
-    goal: Box<dyn Goal>,
+    goals: Vec<Box<dyn Goal>>,
+    off_track_prob: f32,
+    track_width: f32,
 }
 
 pub struct EnvironmentBuilder {
@@ -160,34 +162,50 @@ impl Environment {
         track.add_finish();
         track.compute_rtree();
 
-        let cars = if cars_count == 1 && off_track_prob > 0.0 {
-            let car = if macroquad::rand::gen_range(0.0, 1.0) <= off_track_prob {
-                let x = macroquad::rand::gen_range(-track_width, track_width);
-                Car::new(x, 100.)
-                    .with_rotation(macroquad::rand::gen_range(-PI, PI))
-                    .with_velocity(macroquad::rand::gen_range(-20., 50.))
-            } else {
-                Car::new(0.0, 15.0)
-            };
-            vec![car]
-        } else {
-            #[allow(clippy::manual_is_multiple_of)]
-            let dx = if cars_count % 2 == 0 { -10.0 } else { 0.0 };
-            std::iter::once(0)
-                .chain((1..).flat_map(|n| [n * 20, -n * 20]))
-                .take(cars_count)
-                .map(|x| Car::new(x as f32 + dx, 15.0))
-                .collect::<Vec<_>>()
-        };
-
+        let mut cars = (0..cars_count).map(|_| Car::default()).collect::<Vec<_>>();
+        Environment::position_cars(&mut cars, off_track_prob, track_width);
         let observations = Environment::observe_all(&cars, &track);
+        let goals = (0..cars_count).map(|_| goal.cloned()).collect();
 
-        Self {
+        let mut environment = Self {
             cars,
             track,
             observations,
-            goal,
+            goals,
+            off_track_prob,
+            track_width,
+        };
+        environment.reset();
+        environment
+    }
+
+    fn position_cars(cars: &mut [Car], off_track_prob: f32, track_width: f32) {
+        let len = cars.len();
+        if len == 1 && off_track_prob > 0.0 {
+            if macroquad::rand::gen_range(0.0, 1.0) <= off_track_prob {
+                let x = macroquad::rand::gen_range(-track_width, track_width);
+                cars[0].reset(
+                    vec2(x, 100.0),
+                    macroquad::rand::gen_range(-PI, PI),
+                    macroquad::rand::gen_range(-20., 50.),
+                );
+            } else {
+                cars[0].reset(vec2(0.0, 15.0), FRAC_PI_2, 0.0);
+            };
+        } else {
+            let dx = if len.is_multiple_of(2) { -10.0 } else { 0.0 };
+            let xs = std::iter::once(0).chain((1..).flat_map(|n| [n * 20, -n * 20]));
+            std::iter::zip(cars.iter_mut(), xs).for_each(|(car, x)| {
+                car.reset(vec2(x as f32 + dx, 15.0), FRAC_PI_2, 0.0);
+            });
         }
+        cars.iter_mut().for_each(|car| car.impulse(Vec2::ZERO, 0.0));
+    }
+
+    pub fn reset(&mut self) {
+        Environment::position_cars(&mut self.cars, self.off_track_prob, self.track_width);
+        self.goals.iter_mut().for_each(|goal| goal.reset());
+        self.observations = Environment::observe_all(&self.cars, &self.track);
     }
 
     fn ray_vs_cars(car_index: usize, ray: &(Vec2, Vec2), cars: &[Car]) -> Option<f32> {
@@ -343,7 +361,8 @@ impl Environment {
 
         self.observations = Environment::observe_all(&self.cars, &self.track);
         std::iter::zip(self.cars.iter(), self.observations.iter())
-            .map(|(car, observation)| self.goal.outcome(&self.track, car, observation))
+            .zip(self.goals.iter_mut())
+            .map(|((car, observation), goal)| goal.outcome(&self.track, car, observation))
             .collect()
     }
 

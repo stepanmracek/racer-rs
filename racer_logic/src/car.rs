@@ -289,3 +289,9 @@ impl Car {
         self.skidding
     }
 }
+
+impl Default for Car {
+    fn default() -> Self {
+        Self::new(0.0, 0.0)
+    }
+}

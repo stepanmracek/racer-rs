@@ -1,5 +1,8 @@
 use crate::{
-    controller::Controller, environment::Environment, follow_camera::FollowCamera, states::State,
+    controller::Controller,
+    environment::Environment,
+    follow_camera::FollowCamera,
+    states::{Init, State},
     utils::format_time,
 };
 use macroquad::prelude::*;
@@ -15,13 +18,25 @@ impl Finish {
 }
 
 impl State for Finish {
+    fn init(
+        &mut self,
+        _environment: &mut Environment,
+        _controllers: &mut [Box<dyn Controller>],
+        _follow_camera: &mut FollowCamera,
+    ) {
+    }
+
     fn step(
         &mut self,
         _environment: &mut Environment,
         _controllers: &mut [Box<dyn Controller>],
         _follow_camera: &mut FollowCamera,
     ) -> Option<Box<dyn State>> {
-        None
+        if is_key_pressed(KeyCode::Space) {
+            Some(Box::new(Init::default()))
+        } else {
+            None
+        }
     }
 
     fn draw(&mut self, environment: &Environment, follow_camera: &mut FollowCamera) {
