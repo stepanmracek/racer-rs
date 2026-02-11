@@ -1,20 +1,21 @@
+import argparse
 from collections import deque
 from itertools import count
-from torch.distributions import Categorical
-from tqdm import tqdm
 from typing import cast
-import argparse
-import racer_gym
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+from torch.distributions import Categorical
+from tqdm import tqdm
 from utils import create_scale_layer, policy_output_to_action
+
+import racer_gym
 
 
 class Policy(nn.Module):
-    def __init__(self, data_path: str, obs_dim: int, action_dim: int, hidden_dim: int):
+    def __init__(self, obs_dim: int, action_dim: int, hidden_dim: int):
         super(Policy, self).__init__()
         self.obs_dim = obs_dim
         self.scale_layer = create_scale_layer(next_waypoint=True, rays_count=18)
@@ -27,7 +28,9 @@ class Policy(nn.Module):
         y = F.relu(self.layer1(scaled))
         return F.softmax(self.action_head(y), dim=-1), self.value_head(y)
 
-    def sample_action(self, observation) -> tuple[tuple[float, float], torch.Tensor, torch.Tensor]:
+    def sample_action(
+        self, observation
+    ) -> tuple[tuple[float, float], torch.Tensor, torch.Tensor]:
         x = torch.tensor(observation, dtype=torch.float32)
         probs, state_value = self(x)
         m = Categorical(probs)
@@ -133,7 +136,9 @@ def main():
     train_parser = sub_parsers.add_parser("train")
     train_parser.add_argument("--init-state", type=str, required=False)
     train_parser.add_argument("--episode-start", type=int, required=False, default=1)
-    train_parser.add_argument("--snapshot-interval-episodes", type=int, required=False, default=100)
+    train_parser.add_argument(
+        "--snapshot-interval-episodes", type=int, required=False, default=100
+    )
 
     export_parser = sub_parsers.add_parser("export")
     export_parser.add_argument("--state", type=str, required=True)
@@ -143,7 +148,7 @@ def main():
 
     torch.manual_seed(42)
     obs_dim = len(racer_gym.Environment().observation())
-    policy = Policy("train.csv", obs_dim=obs_dim, action_dim=9, hidden_dim=32)
+    policy = Policy(obs_dim=obs_dim, action_dim=9, hidden_dim=32)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 
     if args.cmd == "train":

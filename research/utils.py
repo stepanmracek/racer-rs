@@ -1,15 +1,16 @@
-from sklearn.preprocessing import MinMaxScaler
 import math
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from sklearn.preprocessing import MinMaxScaler
 
 
 def create_scale_layer_from_ranges(
     data_min: np.ndarray,
     data_max: np.ndarray,
-    target_range:tuple[float,float] = (-1.0, 1.0),
+    target_range: tuple[float, float] = (-1.0, 1.0),
 ) -> nn.Linear:
     min_, max_ = target_range
     scale = (max_ - min_) / (data_max - data_min)
@@ -39,7 +40,9 @@ def create_scale_layer_from_csv(data_path: str, obs_dim: int) -> nn.Linear:
     scaler = MinMaxScaler(feature_range=(-1, 1), copy=True, clip=False)
     scaler.fit(data)
     min_, max_ = scaler.feature_range
-    return create_scale_layer_from_ranges(scaler.data_min_, scaler.data_max_, scaler.feature_range)
+    return create_scale_layer_from_ranges(
+        scaler.data_min_, scaler.data_max_, scaler.feature_range
+    )
 
 
 def create_scale_layer(next_waypoint: bool, rays_count: int) -> nn.Linear:
@@ -56,7 +59,9 @@ def create_scale_layer(next_waypoint: bool, rays_count: int) -> nn.Linear:
     ranges.extend([(0, 205)] * rays_count)
 
     data_min, data_max = zip(*ranges)
-    return create_scale_layer_from_ranges(np.array(data_min), np.array(data_max), (-1.0, 1.0))
+    return create_scale_layer_from_ranges(
+        np.array(data_min), np.array(data_max), (-1.0, 1.0)
+    )
 
 
 policy_output_to_action = {
@@ -70,3 +75,5 @@ policy_output_to_action = {
     7: (0.0, -1.0),
     8: (-1.0, -1.0),
 }
+
+action_to_policy_output = {v: k for k, v in policy_output_to_action.items()}
