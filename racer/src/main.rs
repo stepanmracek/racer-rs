@@ -6,13 +6,14 @@ use racer_logic::{
     game::Game,
 };
 use racer_ndarray_controller::NdarrayController;
-use racer_onnx_controller::{ActionSelectionStrategy, OnnxController};
+use racer_onnx_controller::{ActionSelectionStrategy, OnnxController, OnnxWithHistoryController};
 use racer_pid_controller::PidController;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 enum ControllerArg {
     Onnx(String),
+    OnnxHistory(String),
     Pid(String),
     Ndarray(String),
     KeyboardArrows,
@@ -26,6 +27,7 @@ impl FromStr for ControllerArg {
         if let Some((ctype, path)) = s.split_once(':') {
             match ctype {
                 "onnx" => Ok(ControllerArg::Onnx(path.to_string())),
+                "onnx_history" => Ok(ControllerArg::OnnxHistory(path.to_string())),
                 "pid" => Ok(ControllerArg::Pid(path.to_string())),
                 "ndarray" => Ok(ControllerArg::Ndarray(path.to_string())),
                 other => Err(format!("unknown controller type '{}'", other)),
@@ -49,6 +51,11 @@ impl ControllerArg {
             ControllerArg::Onnx(path) => Box::new(OnnxController::new(
                 path,
                 ActionSelectionStrategy::Stochastic,
+            )),
+            ControllerArg::OnnxHistory(path) => Box::new(OnnxWithHistoryController::new(
+                path,
+                ActionSelectionStrategy::Stochastic,
+                10,
             )),
             ControllerArg::Pid(path) => Box::new(PidController::load(path)),
             ControllerArg::Ndarray(path) => Box::new(NdarrayController::load(path)),

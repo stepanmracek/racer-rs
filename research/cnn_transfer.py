@@ -3,7 +3,6 @@ from itertools import islice
 
 import actor_critic
 import msgpack
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -51,19 +50,39 @@ class CnnPolicy(nn.Module):
 
         action_logits = self.action_head(y)
         value = self.value_head(y)
-        return action_logits, value
-        # no softmax, because loss function accepts log_softmax
-        # F.softmax(action_logits, dim=-1)
+        return F.softmax(action_logits, dim=-1), value
+
+    def save(self, path: str, optimizer: torch.optim.Optimizer):
+        torch.save(
+            {
+                "policy": self.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "rng": torch.get_rng_state(),
+            },
+            path,
+        )
+
+    def export(self, path):
+        dummy_input = torch.randn(1, self.obs_dim, 10, dtype=torch.float32)
+        torch.onnx.export(
+            self, (dummy_input,), path, input_names=["input"], output_names=["output"]
+        )
+
+    def load(self, path: str, optimizer: torch.optim.Optimizer):
+        state = torch.load(path)
+        self.load_state_dict(state["policy"])
+        torch.set_rng_state(state["rng"])
+        optimizer.load_state_dict(state["optimizer"])
 
 
-def train_data(state: str, teacher_runs: int, output: str):
+def train_data(input_state_path: str, teacher_runs: int, output: str):
     env = racer_gym.Environment()
     observation = env.observation()
     src_policy = actor_critic.Policy(
         obs_dim=len(observation), action_dim=9, hidden_dim=32
     )
-    state = torch.load(state)
-    src_policy.load_state_dict(state["policy"])
+    input_state = torch.load(input_state_path)
+    src_policy.load_state_dict(input_state["policy"])
 
     packer = msgpack.Packer()
     with torch.no_grad(), open(output, "wb") as f:
@@ -75,6 +94,7 @@ def train_data(state: str, teacher_runs: int, output: str):
 
             observation = env.observation()
             terminated = False
+            count = 0
             while not terminated:
                 probs, value = src_policy(torch.tensor(observation))
                 observations.append([float(f) for f in observation])
@@ -82,6 +102,9 @@ def train_data(state: str, teacher_runs: int, output: str):
                 teacher_values.append([float(f) for f in value])
                 action = utils.policy_output_to_action[torch.argmax(probs).item()]
                 observation, reward, terminated = env.step(*action)
+                count += 1
+                if count >= 60_00:
+                    break
 
             f.write(
                 packer.pack(
@@ -108,17 +131,17 @@ class TeacherDataset(IterableDataset):
                     teacher_values = torch.tensor(trajectory["teacher_values"])
 
                     obs = []
-                    for i in range(len(observations) - self.timesteps):
+                    for i in range(len(observations) - self.timesteps + 1):
                         obs.append(observations[i : i + self.timesteps].T)
 
                     yield (
                         torch.stack(obs),
-                        teacher_probs[self.timesteps :],
-                        teacher_values[self.timesteps :],
+                        teacher_probs[self.timesteps - 1 :],
+                        teacher_values[self.timesteps - 1 :],
                     )
 
 
-def train(input_file: str, student_epochs: int):
+def train(input_file: str, student_epochs: int, output_state_path: str):
     env = racer_gym.Environment()
     observation = env.observation()
     dst_policy = CnnPolicy(
@@ -134,8 +157,8 @@ def train(input_file: str, student_epochs: int):
     ):
         optimizer.zero_grad()
 
-        student_logits, student_values = dst_policy(observations)
-        student_log_probs = F.log_softmax(student_logits, dim=-1)
+        student_probs, student_values = dst_policy(observations)
+        student_log_probs = torch.log(student_probs)
         probs_loss = F.kl_div(student_log_probs, teacher_probs, reduction="batchmean")
         value_loss = F.mse_loss(student_values, teacher_values)
         loss = probs_loss + 0.1 * value_loss
@@ -147,7 +170,18 @@ def train(input_file: str, student_epochs: int):
             f"{step}: probs_loss={probs_loss.item():.4f}, value_loss={value_loss.item():.4f}"
         )
 
-        # train_progress.set_description_str(f"loss: {loss.item():.4f}", refresh=False)
+    dst_policy.save(output_state_path, optimizer)
+
+
+def export(input_state_path: str, output_onnx_path: str):
+    env = racer_gym.Environment()
+    observation = env.observation()
+    policy = CnnPolicy(
+        obs_dim=len(observation), action_dim=9, cnn_channels=32, hidden_dim=24
+    )
+    optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
+    policy.load(input_state_path, optimizer)
+    policy.export(output_onnx_path)
 
 
 def main():
@@ -155,19 +189,25 @@ def main():
     sub_parsers = parser.add_subparsers(required=True, dest="cmd")
 
     data_parser = sub_parsers.add_parser("train-data")
-    data_parser.add_argument("--state", type=str, required=True)
+    data_parser.add_argument("--input-state", type=str, required=True)
     data_parser.add_argument("--teacher-runs", type=int, required=True)
     data_parser.add_argument("--output", type=str, required=True)
 
     train_parser = sub_parsers.add_parser("train")
     train_parser.add_argument("--student-epochs", type=int, required=True)
     train_parser.add_argument("--teacher-data", type=str, required=True)
+    train_parser.add_argument("--output-state", type=str, required=True)
+
+    export_parser = sub_parsers.add_parser("export")
+    export_parser.add_argument("--input-state", type=str, required=True)
+    export_parser.add_argument("--output-onnx", type=str, required=True)
+
     args = parser.parse_args()
 
     match args.cmd:
         case "train-data":
             train_data(
-                state=args.state,
+                input_state_path=args.input_state,
                 teacher_runs=args.teacher_runs,
                 output=args.output,
             )
@@ -175,6 +215,12 @@ def main():
             train(
                 input_file=args.teacher_data,
                 student_epochs=args.student_epochs,
+                output_state_path=args.output_state,
+            )
+        case "export":
+            export(
+                input_state_path=args.input_state,
+                output_onnx_path=args.output_onnx,
             )
 
 
