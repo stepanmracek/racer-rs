@@ -1,7 +1,10 @@
+from typing import cast
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import utils
+from torch.distributions import Categorical
 
 
 class CnnPolicy(nn.Module):
@@ -43,6 +46,22 @@ class CnnPolicy(nn.Module):
         value = self.value_head(y)
         return F.softmax(action_logits, dim=-1), value
 
+    def sample_action(
+        self, observation
+    ) -> tuple[tuple[float, float], torch.Tensor, torch.Tensor]:
+        x = torch.tensor(observation, dtype=torch.float32).T.unsqueeze(0)
+        probs, state_value = self(x)
+        m = Categorical(probs[0])
+        sample = m.sample()
+        action = utils.policy_output_to_action[cast(int, sample.item())]
+        return action, state_value[0], m.log_prob(sample)
+
+    def export(self, path):
+        dummy_input = torch.randn(1, self.obs_dim, 10, dtype=torch.float32)
+        torch.onnx.export(
+            self, (dummy_input,), path, input_names=["input"], output_names=["output"]
+        )
+
     def save(self, path: str, optimizer: torch.optim.Optimizer):
         torch.save(
             {
@@ -53,14 +72,9 @@ class CnnPolicy(nn.Module):
             path,
         )
 
-    def export(self, path):
-        dummy_input = torch.randn(1, self.obs_dim, 10, dtype=torch.float32)
-        torch.onnx.export(
-            self, (dummy_input,), path, input_names=["input"], output_names=["output"]
-        )
-
-    def load(self, path: str, optimizer: torch.optim.Optimizer):
+    def load(self, path: str, optimizer: torch.optim.Optimizer | None = None):
         state = torch.load(path)
         self.load_state_dict(state["policy"])
         torch.set_rng_state(state["rng"])
-        optimizer.load_state_dict(state["optimizer"])
+        if optimizer:
+            optimizer.load_state_dict(state["optimizer"])
