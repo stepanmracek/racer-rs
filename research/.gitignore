@@ -4,3 +4,5 @@ __pycache__
 policy-*/
 ndarray_controllers/
 ppo_tensorboard/
+*.msgpack
+*.pth
