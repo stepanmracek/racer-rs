@@ -119,13 +119,14 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
                 off_track_prob=args.off_track_prob,
                 goal=racer_gym.Goal.ReachFinish,
             )
-            observation = env.observation()
+            observation = env.observations()[0]
             rewards = []
             log_probs = []
 
             for t in range(60 * 60):
                 action, log_prob = policy.sample_action(observation)
-                observation, reward, finished = env.step(*action)
+                observations, reward, finished = env.step([racer_gym.Action(*action)])
+                observation = observations[0]
                 rewards.append(reward)
                 log_probs.append(log_prob)
                 total_reward += reward

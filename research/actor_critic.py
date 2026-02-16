@@ -99,14 +99,15 @@ def train(args: argparse.Namespace, policy: Policy, optimizer: optim.Optimizer):
     episodes = tqdm(count(args.episode_start))
     for i_episode in episodes:
         env = racer_gym.Environment(seed=i_episode)
-        observation = env.observation()
+        observation = env.observations()[0]
         ep_reward = 0
         rewards = []
         log_probs = []
         values = []
         for t in range(60 * 60):
             action, state_value, log_prob = policy.sample_action(observation)
-            observation, reward, finished = env.step(*action)
+            observations, reward, finished = env.step([racer_gym.Action(*action)])
+            observation = observations[0]
             rewards.append(reward)
             log_probs.append(log_prob)
             values.append(state_value)
@@ -147,7 +148,7 @@ def main():
     args = parser.parse_args()
 
     torch.manual_seed(42)
-    obs_dim = len(racer_gym.Environment().observation())
+    obs_dim = len(racer_gym.Environment().observations()[0])
     policy = Policy(obs_dim=obs_dim, action_dim=9, hidden_dim=32)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 

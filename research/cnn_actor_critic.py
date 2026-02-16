@@ -41,19 +41,20 @@ def train(args: argparse.Namespace, policy: CnnPolicy, optimizer: optim.Optimize
     if args.init_state:
         policy.load(args.init_state)  # , optimizer)
 
-    running_reward = 10
+    running_reward = 0.0
     episodes = tqdm(count(args.episode_start))
     for i_episode in episodes:
         env = racer_gym.Environment(seed=i_episode)
-        observations = deque((env.observation() for _ in range(10)), maxlen=10)
+        observation_history = deque([env.observations()[0]] * 10, maxlen=10)
         ep_reward = 0
         rewards = []
         log_probs = []
         values = []
         for t in range(60 * 60):
-            action, state_value, log_prob = policy.sample_action(observations)
-            observation, reward, finished = env.step(*action)
-            observations.append(observation)
+            action, state_value, log_prob = policy.sample_action(observation_history)
+            all_observations, reward, finished = env.step([racer_gym.Action(*action)])
+            observation = all_observations[0]
+            observation_history.append(observation)
             rewards.append(reward)
             log_probs.append(log_prob)
             values.append(state_value)
@@ -94,7 +95,7 @@ def main():
     args = parser.parse_args()
 
     torch.manual_seed(42)
-    obs_dim = len(racer_gym.Environment().observation())
+    obs_dim = len(racer_gym.Environment().observations()[0])
     policy = CnnPolicy(obs_dim=obs_dim, action_dim=9, cnn_channels=32, hidden_dim=24)
     optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 

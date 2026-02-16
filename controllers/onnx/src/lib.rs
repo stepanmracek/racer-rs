@@ -116,9 +116,8 @@ impl OnnxWithHistoryController {
             if self.past_observations.len() < self.history_len {
                 let first_obs = self.past_observations.front().unwrap();
                 let num_to_pad = self.history_len - self.past_observations.len();
-                let mut padded_obs: Vec<Vec<f32>> = std::iter::repeat(first_obs.clone())
-                    .take(num_to_pad)
-                    .collect();
+                let mut padded_obs: Vec<Vec<f32>> =
+                    std::iter::repeat_n(first_obs.clone(), num_to_pad).collect();
                 padded_obs.extend(self.past_observations.iter().cloned());
                 padded_obs
             } else {
