@@ -290,9 +290,9 @@ impl Environment {
 
     pub fn step(&mut self, actions: &[Action], fixed_time: bool) -> Vec<Outcome> {
         let dt = Environment::dt(fixed_time);
-        let intentions = std::iter::zip(
-            self.cars.iter_mut(),
-            std::iter::zip(self.observations.iter(), actions.iter()),
+        let intentions = itertools::zip_eq(
+            &mut self.cars,
+            itertools::zip_eq(&self.observations, actions),
         )
         .map(|(car, (observation, action))| {
             car.step(

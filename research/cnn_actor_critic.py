@@ -41,20 +41,31 @@ def train(args: argparse.Namespace, policy: CnnPolicy, optimizer: optim.Optimize
     if args.init_state:
         policy.load(args.init_state)  # , optimizer)
 
+    CAR_COUNT = 3
     running_reward = 0.0
     episodes = tqdm(count(args.episode_start))
     for i_episode in episodes:
-        env = racer_gym.Environment(seed=i_episode)
-        observation_history = deque([env.observations()[0]] * 10, maxlen=10)
+        env = racer_gym.Environment(
+            seed=i_episode, car_count=CAR_COUNT, track_width=56.0
+        )
+        observation_history = {
+            car: deque([observation] * 10, maxlen=10)
+            for car, observation in enumerate(env.observations())
+        }
         ep_reward = 0
         rewards = []
         log_probs = []
         values = []
         for t in range(60 * 60):
-            action, state_value, log_prob = policy.sample_action(observation_history)
-            all_observations, reward, finished = env.step([racer_gym.Action(*action)])
-            observation = all_observations[0]
-            observation_history.append(observation)
+            action, state_value, log_prob = policy.sample_action(observation_history[0])
+            actions = [racer_gym.Action(*action)]
+            with torch.no_grad():
+                for car in range(1, CAR_COUNT):
+                    action = policy.argmax_action(observation_history[car])
+                    actions.append(racer_gym.Action(*action))
+            all_observations, reward, finished = env.step(actions)
+            for car, observation in enumerate(all_observations):
+                observation_history[car].append(observation)
             rewards.append(reward)
             log_probs.append(log_prob)
             values.append(state_value)

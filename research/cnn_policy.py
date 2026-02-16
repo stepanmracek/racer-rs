@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import cast
 
 import torch
@@ -47,7 +48,7 @@ class CnnPolicy(nn.Module):
         return F.softmax(action_logits, dim=-1), value
 
     def sample_action(
-        self, observation
+        self, observation: Sequence[list[float]]
     ) -> tuple[tuple[float, float], torch.Tensor, torch.Tensor]:
         x = torch.tensor(observation, dtype=torch.float32).T.unsqueeze(0)
         probs, state_value = self(x)
@@ -55,6 +56,13 @@ class CnnPolicy(nn.Module):
         sample = m.sample()
         action = utils.policy_output_to_action[cast(int, sample.item())]
         return action, state_value[0], m.log_prob(sample)
+
+    def argmax_action(self, observation: Sequence[list[float]]) -> tuple[float, float]:
+        x = torch.tensor(observation, dtype=torch.float32).T.unsqueeze(0)
+        probs, _ = self(x)
+        probs = probs[0]
+        action_index = torch.argmax(probs).item()
+        return utils.policy_output_to_action[cast(int, action_index)]
 
     def export(self, path):
         dummy_input = torch.randn(1, self.obs_dim, 10, dtype=torch.float32)
